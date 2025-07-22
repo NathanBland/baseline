@@ -1,69 +1,73 @@
-import { z } from 'zod'
+import { t } from 'elysia'
 
 // User validation schemas
-export const registerSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  username: z.string().min(3, 'Username must be at least 3 characters').max(20, 'Username must be less than 20 characters'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  firstName: z.string().optional(),
-  lastName: z.string().optional()
+export const registerSchema = t.Object({
+  email: t.String({ format: 'email', error: 'Invalid email address' }),
+  username: t.String({ minLength: 3, maxLength: 20, error: 'Username must be 3-20 characters' }),
+  password: t.String({ minLength: 8, error: 'Password must be at least 8 characters' }),
+  firstName: t.Optional(t.String()),
+  lastName: t.Optional(t.String())
 })
 
-export const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(1, 'Password is required')
+export const loginSchema = t.Object({
+  email: t.String({ format: 'email', error: 'Invalid email address' }),
+  password: t.String({ minLength: 1, error: 'Password is required' })
 })
 
-export const updateUserSchema = z.object({
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  avatar: z.string().url().optional()
+export const updateUserSchema = t.Object({
+  firstName: t.Optional(t.String()),
+  lastName: t.Optional(t.String()),
+  avatar: t.Optional(t.String({ format: 'uri', error: 'Invalid URL format' }))
 })
 
 // Conversation validation schemas
-export const createConversationSchema = z.object({
-  title: z.string().optional(),
-  description: z.string().optional(),
-  type: z.enum(['DIRECT', 'GROUP', 'CHANNEL']).default('DIRECT'),
-  participantIds: z.array(z.string()).min(1, 'At least one participant is required')
+export const createConversationSchema = t.Object({
+  title: t.String({ minLength: 1, error: 'Title is required' }),
+  description: t.Optional(t.String()),
+  type: t.Optional(t.Union([t.Literal('DIRECT'), t.Literal('GROUP')])),
+  participantIds: t.Optional(t.Array(t.String()))
 })
 
-export const updateConversationSchema = z.object({
-  title: z.string().optional(),
-  description: z.string().optional()
+export const updateConversationSchema = t.Object({
+  title: t.Optional(t.String()),
+  description: t.Optional(t.String())
 })
 
 // Message validation schemas
-export const createMessageSchema = z.object({
-  content: z.string().min(1, 'Message content is required'),
-  type: z.enum(['TEXT', 'IMAGE', 'FILE', 'SYSTEM', 'REACTION']).default('TEXT'),
-  replyToId: z.string().optional(),
-  metadata: z.record(z.any()).optional()
+export const createMessageSchema = t.Object({
+  content: t.String({ minLength: 1, error: 'Content is required' }),
+  conversationId: t.String(),
+  type: t.Optional(t.Union([t.Literal('TEXT'), t.Literal('IMAGE'), t.Literal('FILE'), t.Literal('SYSTEM'), t.Literal('REACTION')])),
+  replyToId: t.Optional(t.String()),
+  metadata: t.Optional(t.Record(t.Any()))
 })
 
-export const updateMessageSchema = z.object({
-  content: z.string().min(1, 'Message content is required')
+export const updateMessageSchema = t.Object({
+  content: t.String({ minLength: 1, error: 'Content is required' })
 })
 
 // Pagination schema
-export const paginationSchema = z.object({
-  page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(100).default(20)
+export const paginationSchema = t.Object({
+  page: t.Optional(t.Integer({ minimum: 1, default: 1 })),
+  limit: t.Optional(t.Integer({ minimum: 1, maximum: 100, default: 20 })),
+  sortBy: t.Optional(t.String()),
+  sortOrder: t.Optional(t.Union([t.Literal('asc'), t.Literal('desc')]))
 })
 
-// WebSocket message schemas
-export const wsMessageSchema = z.object({
-  type: z.enum(['join_conversation', 'leave_conversation', 'typing_start', 'typing_stop', 'message']),
-  conversationId: z.string(),
-  data: z.record(z.any()).optional()
+// WebSocket message schema
+export const wsMessageSchema = t.Object({
+  type: t.Union([t.Literal('join_conversation'), t.Literal('leave_conversation'), t.Literal('typing_start'), t.Literal('typing_stop'), t.Literal('message')]),
+  conversationId: t.String(),
+  data: t.Optional(t.Record(t.Any()))
 })
 
-export type RegisterInput = z.infer<typeof registerSchema>
-export type LoginInput = z.infer<typeof loginSchema>
-export type UpdateUserInput = z.infer<typeof updateUserSchema>
-export type CreateConversationInput = z.infer<typeof createConversationSchema>
-export type UpdateConversationInput = z.infer<typeof updateConversationSchema>
-export type CreateMessageInput = z.infer<typeof createMessageSchema>
-export type UpdateMessageInput = z.infer<typeof updateMessageSchema>
-export type PaginationInput = z.infer<typeof paginationSchema>
-export type WSMessageInput = z.infer<typeof wsMessageSchema>
+// Type definitions using ElysiaJS TypeBox inference
+export type RegisterInput = typeof registerSchema.static
+export type LoginInput = typeof loginSchema.static
+export type UpdateUserInput = typeof updateUserSchema.static
+export type CreateConversationInput = typeof createConversationSchema.static
+export type UpdateConversationInput = typeof updateConversationSchema.static
+export type CreateMessageInput = typeof createMessageSchema.static
+export type UpdateMessageInput = typeof updateMessageSchema.static
+export type PaginationInput = typeof paginationSchema.static
+export type WSMessageInput = typeof wsMessageSchema.static

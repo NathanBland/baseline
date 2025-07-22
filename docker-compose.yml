@@ -65,9 +65,9 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       API_URL: ${API_URL:-http://api:3001}
-      UI_PORT: ${UI_PORT:-3000}
+      UI_PORT: ${UI_PORT:-5173}
     ports:
-      - "${UI_PORT:-3000}:3000"
+      - "${UI_PORT:-5173}:5173"
     volumes:
       - ./ui:/app
       - /app/node_modules
