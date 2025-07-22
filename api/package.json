@@ -1,0 +1,58 @@
+{
+  "name": "baseline-api",
+  "version": "1.0.0",
+  "description": "Baseline API built with ElysiaJS and Bun",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "start": "bun run dist/index.js",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "test:coverage": "bun test --coverage",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write src/**/*.ts",
+    "type-check": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:reset": "prisma migrate reset --force",
+    "db:seed": "bun run src/db/seed.ts",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "elysia": "^1.0.0",
+    "@elysiajs/cors": "^1.0.0",
+    "@elysiajs/swagger": "^1.0.0",
+    "@elysiajs/jwt": "^1.0.0",
+    "@elysiajs/cookie": "^1.0.0",
+    "@elysiajs/static": "^1.0.0",
+    "@elysiajs/websocket": "^1.0.0",
+    "@prisma/client": "^5.7.0",
+    "lucia": "^3.0.0",
+    "@lucia-auth/adapter-prisma": "^4.0.0",
+    "arctic": "^1.0.0",
+    "bcryptjs": "^2.4.3",
+    "zod": "^3.22.0",
+    "redis": "^4.6.0",
+    "nanoid": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "prettier": "^3.0.0",
+    "prisma": "^5.7.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0",
+    "@vitest/coverage-v8": "^1.0.0"
+  },
+  "prisma": {
+    "schema": "src/db/schema.prisma"
+  }
+}

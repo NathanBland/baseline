@@ -1,0 +1,189 @@
+kind: pipeline
+type: docker
+name: baseline
+
+environment:
+  DOCKER_BUILDKIT: 1
+
+steps:
+  - name: test-api
+    image: oven/bun:1
+    commands:
+      - cd api
+      - bun install
+      - bun run lint
+      - bun run type-check
+      - bun run test:coverage
+    when:
+      event:
+        - push
+        - pull_request
+
+  - name: test-ui
+    image: oven/bun:1
+    commands:
+      - cd ui
+      - bun install
+      - bun run lint
+      - bun run type-check
+      - bun run test:coverage
+    when:
+      event:
+        - push
+        - pull_request
+
+  - name: build-api
+    image: plugins/docker
+    settings:
+      repo: ${DRONE_REPO_NAME}-api
+      tags:
+        - ${DRONE_COMMIT_SHA:0:8}
+        - ${DRONE_BRANCH}
+        - latest
+      dockerfile: api/Dockerfile
+      context: api
+      target: production
+      build_args:
+        - NODE_ENV=production
+      registry: ${DOCKER_REGISTRY}
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+    when:
+      event:
+        - push
+      branch:
+        - main
+        - develop
+
+  - name: build-ui
+    image: plugins/docker
+    settings:
+      repo: ${DRONE_REPO_NAME}-ui
+      tags:
+        - ${DRONE_COMMIT_SHA:0:8}
+        - ${DRONE_BRANCH}
+        - latest
+      dockerfile: ui/Dockerfile
+      context: ui
+      target: production
+      build_args:
+        - NODE_ENV=production
+      registry: ${DOCKER_REGISTRY}
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+    when:
+      event:
+        - push
+      branch:
+        - main
+        - develop
+
+  - name: deploy-staging
+    image: curlimages/curl
+    commands:
+      - |
+        curl -X POST "${PORTAINER_WEBHOOK_STAGING}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "tag": "${DRONE_COMMIT_SHA:0:8}",
+            "environment": "staging"
+          }'
+    when:
+      event:
+        - push
+      branch:
+        - develop
+
+  - name: deploy-production
+    image: curlimages/curl
+    commands:
+      - |
+        curl -X POST "${PORTAINER_WEBHOOK_PRODUCTION}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "tag": "${DRONE_COMMIT_SHA:0:8}",
+            "environment": "production"
+          }'
+    when:
+      event:
+        - push
+      branch:
+        - main
+
+  - name: notify-success
+    image: plugins/slack
+    settings:
+      webhook:
+        from_secret: slack_webhook
+      channel: deployments
+      username: drone
+      template: |
+        ✅ *{{repo.name}}* deployment successful
+        📦 Branch: `{{build.branch}}`
+        🏷️ Tag: `{{build.tag}}`
+        👤 Author: {{build.author}}
+        🔗 <{{build.link}}|View Build>
+    when:
+      status:
+        - success
+      event:
+        - push
+      branch:
+        - main
+        - develop
+
+  - name: notify-failure
+    image: plugins/slack
+    settings:
+      webhook:
+        from_secret: slack_webhook
+      channel: deployments
+      username: drone
+      template: |
+        ❌ *{{repo.name}}* deployment failed
+        📦 Branch: `{{build.branch}}`
+        👤 Author: {{build.author}}
+        🔗 <{{build.link}}|View Build>
+    when:
+      status:
+        - failure
+
+services:
+  - name: postgres
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: baseline_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - 5432
+
+  - name: redis
+    image: redis:7-alpine
+    ports:
+      - 6379
+
+---
+kind: secret
+name: docker_username
+get:
+  path: docker
+  name: username
+
+---
+kind: secret
+name: docker_password
+get:
+  path: docker
+  name: password
+
+---
+kind: secret
+name: slack_webhook
+get:
+  path: slack
+  name: webhook
