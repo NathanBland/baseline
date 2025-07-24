@@ -1,0 +1,118 @@
+// Baseline API Database Schema
+// Models: users, messages, conversations with Lucia auth support
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model with Lucia auth support
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  username      String   @unique
+  firstName     String?
+  lastName      String?
+  avatar        String?
+  hashedPassword String?
+  emailVerified Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Lucia auth relations
+  sessions      Session[]
+  
+  // App relations
+  messages      Message[]
+  conversations ConversationParticipant[]
+  
+  @@map("users")
+}
+
+// Lucia session model
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  
+  user      User     @relation(references: [id], fields: [userId], onDelete: Cascade)
+  
+  @@map("sessions")
+}
+
+// Conversation model
+model Conversation {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  type        ConversationType @default(DIRECT)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  participants ConversationParticipant[]
+  messages     Message[]
+  
+  @@map("conversations")
+}
+
+// Many-to-many relationship between users and conversations
+model ConversationParticipant {
+  id             String   @id @default(cuid())
+  userId         String
+  conversationId String
+  joinedAt       DateTime @default(now())
+  role           ParticipantRole @default(MEMBER)
+  
+  // Relations
+  user         User         @relation(references: [id], fields: [userId], onDelete: Cascade)
+  conversation Conversation @relation(references: [id], fields: [conversationId], onDelete: Cascade)
+  
+  @@unique([userId, conversationId])
+  @@map("conversation_participants")
+}
+
+// Message model
+model Message {
+  id             String      @id @default(cuid())
+  content        String
+  type           MessageType @default(TEXT)
+  conversationId String
+  authorId       String
+  replyToId      String?
+  metadata       Json?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  
+  // Relations
+  conversation Conversation @relation(references: [id], fields: [conversationId], onDelete: Cascade)
+  author       User         @relation(references: [id], fields: [authorId], onDelete: Cascade)
+  replyTo      Message?     @relation("MessageReplies", references: [id], fields: [replyToId])
+  replies      Message[]    @relation("MessageReplies")
+  
+  @@map("messages")
+}
+
+// Enums
+enum ConversationType {
+  DIRECT
+  GROUP
+}
+
+enum ParticipantRole {
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  SYSTEM
+  REACTION
+}

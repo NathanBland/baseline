@@ -39,7 +39,7 @@ export const createMessageSchema = t.Object({
   conversationId: t.String(),
   type: t.Optional(t.Union([t.Literal('TEXT'), t.Literal('IMAGE'), t.Literal('FILE'), t.Literal('SYSTEM'), t.Literal('REACTION')])),
   replyToId: t.Optional(t.String()),
-  metadata: t.Optional(t.Record(t.Any()))
+  metadata: t.Optional(t.Record(t.String(), t.Any()))
 })
 
 export const updateMessageSchema = t.Object({
@@ -54,13 +54,6 @@ export const paginationSchema = t.Object({
   sortOrder: t.Optional(t.Union([t.Literal('asc'), t.Literal('desc')]))
 })
 
-// WebSocket message schema
-export const wsMessageSchema = t.Object({
-  type: t.Union([t.Literal('join_conversation'), t.Literal('leave_conversation'), t.Literal('typing_start'), t.Literal('typing_stop'), t.Literal('message')]),
-  conversationId: t.String(),
-  data: t.Optional(t.Record(t.Any()))
-})
-
 // Type definitions using ElysiaJS TypeBox inference
 export type RegisterInput = typeof registerSchema.static
 export type LoginInput = typeof loginSchema.static
@@ -70,4 +63,3 @@ export type UpdateConversationInput = typeof updateConversationSchema.static
 export type CreateMessageInput = typeof createMessageSchema.static
 export type UpdateMessageInput = typeof updateMessageSchema.static
 export type PaginationInput = typeof paginationSchema.static
-export type WSMessageInput = typeof wsMessageSchema.static

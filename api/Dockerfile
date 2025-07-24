@@ -11,10 +11,12 @@ RUN bun install --frozen-lockfile
 FROM base AS development
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Generate Prisma client
 RUN bunx prisma generate
 EXPOSE 3001
 ENV NODE_ENV=development
-CMD ["bun", "run", "dev"]
+# Use --watch for hot reloading in development
+CMD ["bun", "run", "--watch", "src/index.ts"]
 
 # Build stage
 FROM base AS build

@@ -31,7 +31,8 @@ export const lucia = new Lucia(adapter, {
 export const github = process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET
   ? new GitHub(
       process.env.GITHUB_CLIENT_ID,
-      process.env.GITHUB_CLIENT_SECRET
+      process.env.GITHUB_CLIENT_SECRET,
+      process.env.GITHUB_REDIRECT_URI || 'http://localhost:3000/auth/github/callback'
     )
   : null
 
@@ -48,8 +49,8 @@ export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 12)
 }
 
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash)
+export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
+  return bcrypt.compare(password, hashedPassword)
 }
 
 // Type declarations for Lucia
