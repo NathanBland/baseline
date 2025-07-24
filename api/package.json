@@ -29,7 +29,8 @@
     "prisma": "^6.12.0"
   },
   "devDependencies": {
-    "bun-types": "latest"
+    "@types/bun": "^1.2.19",
+    "bun-types": "^1.2.19"
   },
   "module": "src/index.js"
 }

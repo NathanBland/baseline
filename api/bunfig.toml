@@ -1,0 +1,13 @@
+[test]
+# Test configuration for Bun
+coverage = true
+coverageThreshold = 90
+coverageReporter = ["text", "html"]
+coverageDir = "coverage"
+
+# Test patterns
+testNamePattern = "*.test.*"
+testPathPattern = "src/tests/**/*.test.ts"
+
+# Test environment
+env = "test"

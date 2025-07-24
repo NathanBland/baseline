@@ -47,30 +47,30 @@ db-studio: ## Open Prisma Studio
 # Testing
 test: ## Run all tests
 	docker-compose exec api bun run test
-	docker-compose exec ui bun run test
+	docker-compose exec ui npm run test
 
 test-api: ## Run API tests only
 	docker-compose exec api bun run test
 
 test-ui: ## Run UI tests only
-	docker-compose exec ui bun run test
+	docker-compose exec ui npm run test
 
 test-coverage: ## Run tests with coverage
 	docker-compose exec api bun run test:coverage
-	docker-compose exec ui bun run test:coverage
+	docker-compose exec ui npm run test:coverage
 
 # Code quality
 lint: ## Run linters
 	docker-compose exec api bun run lint
-	docker-compose exec ui bun run lint
+	docker-compose exec ui npm run lint
 
 format: ## Format code
 	docker-compose exec api bun run format
-	docker-compose exec ui bun run format
+	docker-compose exec ui npm run format
 
 type-check: ## Run type checking
 	docker-compose exec api bun run type-check
-	docker-compose exec ui bun run type-check
+	docker-compose exec ui npm run type-check
 
 # Container management
 down: ## Stop all containers
@@ -132,7 +132,7 @@ install-api: ## Install API dependencies
 	docker-compose exec api bun install
 
 install-ui: ## Install UI dependencies
-	docker-compose exec ui bun install
+	docker-compose exec ui npm install
 
 # Health checks
 health: ## Check health of all services

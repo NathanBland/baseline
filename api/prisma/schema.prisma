@@ -101,6 +101,7 @@ model Message {
 enum ConversationType {
   DIRECT
   GROUP
+  CHANNEL
 }
 
 enum ParticipantRole {

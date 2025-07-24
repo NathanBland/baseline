@@ -5,7 +5,9 @@ import { jwt } from '@elysiajs/jwt'
 import { cookie } from '@elysiajs/cookie'
 import { websocket } from '@elysiajs/websocket'
 import { initializeDatabase } from './db/index.js'
-import { authRoutes } from './routes/auth.js'
+import { authModule } from './modules/auth'
+import { conversationModule } from './modules/conversations'
+import { messageModule } from './modules/messages'
 import { websocketHandler } from './websocket/index.js'
 
 // Initialize database connections
@@ -28,7 +30,9 @@ const app = new Elysia()
       },
       tags: [
         { name: 'Health', description: 'Health check endpoints' },
-        { name: 'Auth', description: 'Authentication endpoints' }
+        { name: 'Auth', description: 'Authentication endpoints' },
+        { name: 'Conversations', description: 'Conversation management endpoints' },
+        { name: 'Messages', description: 'Message CRUD endpoints' }
       ]
     }
   }))
@@ -38,7 +42,9 @@ const app = new Elysia()
   }))
   .use(cookie())
   // .use(websocket()) // CAUSES createValidationError - incompatible with current Elysia version
-  .use(authRoutes)
+  .use(authModule)
+  .use(conversationModule)
+  .use(messageModule)
   .get('/', () => 'Hello Elysia')
   .get('/health', () => ({
     status: 'ok',
@@ -56,11 +62,17 @@ const app = new Elysia()
     open: websocketHandler.open,
     close: websocketHandler.close
   })
-  .listen({
+
+// Export app for testing
+export { app }
+
+// Start server only if not in test environment
+if (process.env.NODE_ENV !== 'test') {
+  app.listen({
     port: process.env.API_PORT || 3000,
     hostname: '0.0.0.0'
+  }, () => {
+    console.log('✅ Connected to PostgreSQL database')
+    console.log(`🦊 Elysia is running at 0.0.0.0:${process.env.API_PORT || 3000}`)
   })
-
-console.log(
-  `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
-)
+}
