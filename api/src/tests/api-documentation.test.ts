@@ -72,7 +72,9 @@ describe('API Documentation', () => {
 
       // Then: Should return welcome message
       expect(response.status).toBe(200)
-      expect(response.headers.get('content-type')).toContain('text/plain')
+      const contentType = response.headers.get('content-type')
+      expect(contentType).toBeTruthy()
+      expect(contentType).toContain('text/plain')
       
       const text = await response.text()
       expect(text).toBe('Hello Elysia')

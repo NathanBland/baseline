@@ -4,10 +4,11 @@ import { app } from '../index'
 describe('User Authentication', () => {
   describe('When registering new users', () => {
     it('should create account given valid registration details', async () => {
-      // Given: Valid user registration data
+      // Given: Valid user registration data with unique identifiers for test isolation
+      const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
       const registrationData = {
-        username: 'testuser',
-        email: 'test@example.com',
+        username: `testuser-${uniqueId}`,
+        email: `test-${uniqueId}@example.com`,
         password: 'securePassword123'
       }
 
@@ -175,7 +176,7 @@ describe('User Authentication', () => {
       )
 
       // Then: Should reject the request
-      expect([401]).toContain(response.status)
+      expect(response.status).toBe(401)
     })
 
     it('should logout user given valid session', async () => {

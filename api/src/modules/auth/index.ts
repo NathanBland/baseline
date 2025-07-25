@@ -1,4 +1,5 @@
 import { Elysia, t } from 'elysia'
+import { status } from 'elysia'
 import { AuthService } from './service'
 import { AuthModel } from './model'
 
@@ -85,7 +86,7 @@ export const authModule = new Elysia({ prefix: '/auth' })
     '/me',
     async ({ cookie: { session } }) => {
       if (!session.value) {
-        throw new Error('No session found')
+        throw status(401, 'No session found')
       }
 
       return await AuthService.getCurrentUser(session.value)

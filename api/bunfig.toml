@@ -2,7 +2,7 @@
 # Test configuration for Bun
 coverage = true
 coverageThreshold = 90
-coverageReporter = ["text", "html"]
+coverageReporter = ["text"]
 coverageDir = "coverage"
 
 # Test patterns

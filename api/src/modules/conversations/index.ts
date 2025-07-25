@@ -1,11 +1,22 @@
-import { Elysia, t } from 'elysia'
+import { Elysia, t, status } from 'elysia'
 import { ConversationService } from './service'
 import { ConversationModel } from './model'
+import { AuthService } from '../auth/service'
 
 export const conversationModule = new Elysia({ prefix: '/conversations' })
   .get(
     '/',
-    async ({ query }) => {
+    async ({ query, cookie: { session } }) => {
+      if (!session.value) {
+        throw status(401, 'Authentication required')
+      }
+
+      // Validate session and get user
+      const sessionValidation = await AuthService.validateSession(session.value)
+      if (!sessionValidation) {
+        throw status(401, 'Invalid session')
+      }
+
       const { userId, limit = '50', offset = '0' } = query
       return await ConversationService.getConversations(
         userId,
@@ -28,7 +39,17 @@ export const conversationModule = new Elysia({ prefix: '/conversations' })
   )
   .get(
     '/:id',
-    async ({ params: { id }, query: { userId } }) => {
+    async ({ params: { id }, query: { userId }, cookie: { session } }) => {
+      if (!session.value) {
+        throw status(401, 'Authentication required')
+      }
+
+      // Validate session and get user
+      const sessionValidation = await AuthService.validateSession(session.value)
+      if (!sessionValidation) {
+        throw status(401, 'Invalid session')
+      }
+
       return await ConversationService.getConversationById(id, userId)
     },
     {
@@ -48,7 +69,17 @@ export const conversationModule = new Elysia({ prefix: '/conversations' })
   )
   .post(
     '/',
-    async ({ body, query: { userId } }) => {
+    async ({ body, query: { userId }, cookie: { session } }) => {
+      if (!session.value) {
+        throw status(401, 'Authentication required')
+      }
+
+      // Validate session and get user
+      const sessionValidation = await AuthService.validateSession(session.value)
+      if (!sessionValidation) {
+        throw status(401, 'Invalid session')
+      }
+
       return await ConversationService.createConversation(body, userId)
     },
     {
@@ -68,7 +99,17 @@ export const conversationModule = new Elysia({ prefix: '/conversations' })
   )
   .put(
     '/:id',
-    async ({ params: { id }, body, query: { userId } }) => {
+    async ({ params: { id }, body, query: { userId }, cookie: { session } }) => {
+      if (!session.value) {
+        throw status(401, 'Authentication required')
+      }
+
+      // Validate session and get user
+      const sessionValidation = await AuthService.validateSession(session.value)
+      if (!sessionValidation) {
+        throw status(401, 'Invalid session')
+      }
+
       return await ConversationService.updateConversation(id, body, userId)
     },
     {

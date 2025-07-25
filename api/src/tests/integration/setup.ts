@@ -28,6 +28,10 @@ export interface TestMessage {
  */
 export async function cleanupTestData(): Promise<void> {
   try {
+    // Comprehensive global state reset for complete Given-When-Then BDD test isolation
+    const { resetAllGlobalState } = await import('../__mocks__/prisma')
+    resetAllGlobalState()
+    
     // Delete in correct order to respect foreign key constraints
     await prisma.message.deleteMany({
       where: {

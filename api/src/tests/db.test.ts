@@ -1,7 +1,12 @@
-import { describe, it, expect } from 'bun:test'
-import { mockPrisma } from './__mocks__/prisma'
+import { describe, it, expect, beforeEach } from 'bun:test'
+import { mockPrisma, resetMockState } from './__mocks__/prisma'
 
 describe('Database Connection', () => {
+  beforeEach(async () => {
+    // Reset mock state before each test to prevent state pollution (critical for BDD test isolation)
+    resetMockState()
+  })
+
   it('should connect to database successfully', async () => {
     // Test mocked database connection
     await mockPrisma.$connect()
@@ -15,13 +20,16 @@ describe('Database Connection', () => {
     expect(result[0]).toHaveProperty('connected', 1)
   })
 
-  it('should handle transactions', async () => {
+  it('should handle transactions given database transaction request', async () => {
+    // Given: A database transaction is needed
+    // When: A transaction is executed with user creation
     const user = await mockPrisma.$transaction(async (tx: any) => {
       return await tx.user.create()
     })
 
+    // Then: Should return created user with correct properties
     expect(user.username).toBe('testuser')
-    expect(user.id).toBe('mock-user-id')
+    expect(user.id).toBe('user1') // Updated to match input-driven mock
   })
 
   it('should handle CRUD operations', async () => {

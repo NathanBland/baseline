@@ -45,7 +45,21 @@ const app = new Elysia()
   .use(authModule)
   .use(conversationModule)
   .use(messageModule)
-  .get('/', () => 'Hello Elysia')
+  .get('/', () => new Response('Hello Elysia', {
+    headers: { 'content-type': 'text/plain' }
+  }))
+  .post('/', () => new Response('Method Not Allowed', {
+    status: 405,
+    headers: { 'content-type': 'text/plain' }
+  }))
+  .put('/', () => new Response('Method Not Allowed', {
+    status: 405,
+    headers: { 'content-type': 'text/plain' }
+  }))
+  .delete('/', () => new Response('Method Not Allowed', {
+    status: 405,
+    headers: { 'content-type': 'text/plain' }
+  }))
   .get('/health', () => ({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -56,6 +70,35 @@ const app = new Elysia()
       summary: 'Health check endpoint',
       description: 'Returns the current status and version of the API'
     }
+  })
+  .post('/health', () => new Response('Method Not Allowed', {
+    status: 405,
+    headers: { 'content-type': 'text/plain' }
+  }))
+  .put('/health', () => new Response('Method Not Allowed', {
+    status: 405,
+    headers: { 'content-type': 'text/plain' }
+  }))
+  .delete('/health', () => new Response('Method Not Allowed', {
+    status: 405,
+    headers: { 'content-type': 'text/plain' }
+  }))
+  .get('/ws', ({ headers }) => {
+    // Check for proper WebSocket upgrade headers
+    const upgrade = headers.upgrade?.toLowerCase()
+    const connection = headers.connection?.toLowerCase()
+    
+    if (upgrade !== 'websocket' || !connection?.includes('upgrade')) {
+      return new Response('Bad Request: WebSocket upgrade required', {
+        status: 400,
+        headers: { 'content-type': 'text/plain' }
+      })
+    }
+    
+    return new Response('Upgrade Required', {
+      status: 426,
+      headers: { 'content-type': 'text/plain' }
+    })
   })
   .ws('/ws', {
     message: websocketHandler.message,

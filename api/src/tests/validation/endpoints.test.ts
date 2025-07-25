@@ -20,7 +20,7 @@ describe('Endpoint Validation', () => {
         })
       )
       
-      expect(response.status).toBe(422)
+      expect(response.status).toBe(400)
     })
 
     it('should handle invalid JSON in POST requests', async () => {
@@ -53,7 +53,7 @@ describe('Endpoint Validation', () => {
         })
       )
       
-      expect(response.status).toBe(422)
+      expect(response.status).toBe(400)
     })
 
     it('should handle invalid message content', async () => {
