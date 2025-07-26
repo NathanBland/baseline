@@ -80,7 +80,8 @@ export abstract class AuthService {
           username: user.username,
           email: user.email
         },
-        sessionId: session.id
+        sessionId: session.id,
+        token: session.id
       }
     } catch (error) {
       // Re-throw ElysiaJS status errors

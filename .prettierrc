@@ -8,5 +8,7 @@
   "bracketSpacing": true,
   "arrowParens": "avoid",
   "endOfLine": "lf",
+  "unusedImports": "warn",
+  "unusedVariables": "warn",
   "plugins": ["prettier-plugin-tailwindcss"]
 }

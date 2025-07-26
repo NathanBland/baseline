@@ -71,7 +71,7 @@ export namespace ConversationModel {
 
   // Query parameters
   export const conversationQuery = t.Object({
-    userId: t.String(),
+    // userId removed - inferred from session for security
     limit: t.Optional(t.String()),
     offset: t.Optional(t.String())
   })

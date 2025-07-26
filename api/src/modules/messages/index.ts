@@ -48,18 +48,21 @@ export const messageModule = new Elysia({ prefix: '/messages' })
   )
   .get(
     '/:id',
-    async ({ params: { id }, query }) => {
-      const { userId } = query
-      
-      if (!userId) {
-        throw new Error('User ID is required')
+    async ({ params: { id }, cookie: { session } }) => {
+      if (!session.value) {
+        throw status(401, 'Authentication required')
+      }
+
+      // Validate session and get user
+      const sessionValidation = await AuthService.validateSession(session.value)
+      if (!sessionValidation) {
+        throw status(401, 'Invalid session')
       }
       
-      return await MessageService.getMessageById(id, userId)
+      return await MessageService.getMessageById(id, sessionValidation.user.id)
     },
     {
       params: t.Object({ id: t.String() }),
-      query: t.Object({ userId: t.String() }),
       response: {
         200: MessageModel.messageResponse,
         404: MessageModel.notFoundError,
@@ -74,14 +77,18 @@ export const messageModule = new Elysia({ prefix: '/messages' })
   )
   .post(
     '/',
-    async ({ body }) => {
-      const { authorId } = body
-      
-      if (!authorId) {
-        throw new Error('Author ID is required')
+    async ({ body, cookie: { session } }) => {
+      if (!session.value) {
+        throw status(401, 'Authentication required')
+      }
+
+      // Validate session and get user
+      const sessionValidation = await AuthService.validateSession(session.value)
+      if (!sessionValidation) {
+        throw status(401, 'Invalid session')
       }
       
-      return await MessageService.createMessage(body, authorId)
+      return await MessageService.createMessage(body, sessionValidation.user.id)
     },
     {
       body: MessageModel.createMessageBody,
@@ -100,18 +107,21 @@ export const messageModule = new Elysia({ prefix: '/messages' })
   )
   .put(
     '/:id',
-    async ({ params: { id }, body, query }) => {
-      const { userId } = query
-      
-      if (!userId) {
-        throw new Error('User ID is required')
+    async ({ params: { id }, body, cookie: { session } }) => {
+      if (!session.value) {
+        throw status(401, 'Authentication required')
+      }
+
+      // Validate session and get user
+      const sessionValidation = await AuthService.validateSession(session.value)
+      if (!sessionValidation) {
+        throw status(401, 'Invalid session')
       }
       
-      return await MessageService.updateMessage(id, body, userId)
+      return await MessageService.updateMessage(id, body, sessionValidation.user.id)
     },
     {
       params: t.Object({ id: t.String() }),
-      query: t.Object({ userId: t.String() }),
       body: MessageModel.updateMessageBody,
       response: {
         200: MessageModel.messageResponse,
@@ -127,18 +137,21 @@ export const messageModule = new Elysia({ prefix: '/messages' })
   )
   .delete(
     '/:id',
-    async ({ params: { id }, query }) => {
-      const { userId } = query
-      
-      if (!userId) {
-        throw new Error('User ID is required')
+    async ({ params: { id }, cookie: { session } }) => {
+      if (!session.value) {
+        throw status(401, 'Authentication required')
+      }
+
+      // Validate session and get user
+      const sessionValidation = await AuthService.validateSession(session.value)
+      if (!sessionValidation) {
+        throw status(401, 'Invalid session')
       }
       
-      return await MessageService.deleteMessage(id, userId)
+      return await MessageService.deleteMessage(id, sessionValidation.user.id)
     },
     {
       params: t.Object({ id: t.String() }),
-      query: t.Object({ userId: t.String() }),
       response: {
         200: t.Object({ success: t.Boolean() }),
         404: MessageModel.notFoundError,
@@ -153,17 +166,23 @@ export const messageModule = new Elysia({ prefix: '/messages' })
   )
   .get(
     '/search',
-    async ({ query }) => {
-      const { conversationId, userId, query: searchQuery, limit = '50', offset = '0' } = query
-      
-      if (!userId) {
-        throw new Error('User ID is required')
+    async ({ query, cookie: { session } }) => {
+      if (!session.value) {
+        throw status(401, 'Authentication required')
       }
+
+      // Validate session and get user
+      const sessionValidation = await AuthService.validateSession(session.value)
+      if (!sessionValidation) {
+        throw status(401, 'Invalid session')
+      }
+
+      const { conversationId, query: searchQuery, limit = '50', offset = '0' } = query
       
       return await MessageService.searchMessages(
         conversationId,
         searchQuery,
-        userId,
+        sessionValidation.user.id,
         parseInt(limit),
         parseInt(offset)
       )

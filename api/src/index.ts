@@ -18,7 +18,7 @@ const app = new Elysia()
   .use(cors({
     origin: process.env.NODE_ENV === 'production' 
       ? [process.env.UI_URL || 'http://localhost:3000']
-      : true,
+      : ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
     credentials: true
   }))
   .use(swagger({

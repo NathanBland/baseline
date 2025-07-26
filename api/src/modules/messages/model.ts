@@ -35,7 +35,7 @@ export namespace MessageModel {
   export const createMessageBody = t.Object({
     content: t.String({ minLength: 1, maxLength: 2000 }),
     conversationId: t.String(),
-    authorId: t.String(),
+    // authorId removed - inferred from session for security
     replyToId: t.Optional(t.String()),
     type: t.Optional(t.Union([t.Literal('TEXT'), t.Literal('IMAGE'), t.Literal('FILE'), t.Literal('SYSTEM'), t.Literal('REACTION')]))
   })
@@ -50,7 +50,7 @@ export namespace MessageModel {
   // Query parameters
   export const messageQuery = t.Object({
     conversationId: t.String(),
-    userId: t.String(),
+    // userId removed - inferred from session for security
     limit: t.Optional(t.String()),
     offset: t.Optional(t.String()),
     before: t.Optional(t.String()),
@@ -60,7 +60,7 @@ export namespace MessageModel {
 
   export const searchQuery = t.Object({
     conversationId: t.String(),
-    userId: t.String(),
+    // userId removed - inferred from session for security
     query: t.String({ minLength: 1 }),
     limit: t.Optional(t.String()),
     offset: t.Optional(t.String())

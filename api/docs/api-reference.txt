@@ -1,0 +1,978 @@
+# BASELINE API COMPREHENSIVE REFERENCE
+# Generated: 2025-07-25
+# Version: 1.0.0
+# Built with: ElysiaJS + Bun Runtime + PostgreSQL + Lucia Auth
+
+================================================================================
+OVERVIEW
+================================================================================
+
+The Baseline API is a modern, modular REST API built with ElysiaJS that provides:
+- User authentication and session management (Lucia + cookie-based sessions)
+- Real-time messaging with WebSocket support
+- Conversation and participant management
+- File upload capabilities
+- Full CRUD operations for messages and conversations
+- TypeScript-first with automatic OpenAPI/Swagger documentation
+
+Base URL: http://localhost:3000
+Documentation: http://localhost:3000/swagger
+
+================================================================================
+AUTHENTICATION & SESSIONS
+================================================================================
+
+All authenticated endpoints require a session cookie. The API uses Lucia for session management with HttpOnly cookies.
+
+Cookie Name: session
+Cookie Attributes: HttpOnly, SameSite=lax, Secure (in production)
+Session Duration: 30 days
+
+How to authenticate:
+1. Register or login to receive a session cookie
+2. Browser automatically sends cookie with subsequent requests
+3. Session validation happens server-side on each request
+
+================================================================================
+CORE ENDPOINTS
+================================================================================
+
+## ROOT & HEALTH ENDPOINTS
+
+GET /
+- Description: API welcome message
+- Authentication: None
+- Response: "Hello Elysia" (text/plain)
+- Status Codes: 200
+
+GET /health
+- Description: Health check with database status
+- Authentication: None
+- Response: { status: "ok", database: "connected", timestamp: "ISO string" }
+- Status Codes: 200
+
+================================================================================
+AUTHENTICATION ENDPOINTS (/auth)
+================================================================================
+
+## User Registration
+POST /auth/register
+- Description: Create new user account and establish session
+- Authentication: None
+- Content-Type: application/json
+
+Request Body:
+{
+  "username": "string (required, 3-50 chars)",
+  "email": "string (required, valid email)",
+  "password": "string (required, min 8 chars)",
+  "firstName": "string (optional)",
+  "lastName": "string (optional)"
+}
+
+Response (200):
+{
+  "success": true,
+  "user": {
+    "id": "string",
+    "username": "string",
+    "email": "string",
+    "firstName": "string|null",
+    "lastName": "string|null",
+    "avatar": "string|null",
+    "emailVerified": "boolean",
+    "createdAt": "ISO string",
+    "updatedAt": "ISO string"
+  },
+  "sessionId": "string"
+}
+
+Status Codes: 200 (success), 400 (user exists), 422 (validation error)
+
+## User Login
+POST /auth/login
+- Description: Authenticate user and establish session
+- Authentication: None
+- Content-Type: application/json
+
+Request Body:
+{
+  "email": "string (required)",
+  "password": "string (required)"
+}
+
+Response (200):
+{
+  "success": true,
+  "user": {
+    "id": "string",
+    "username": "string",
+    "email": "string",
+    "firstName": "string|null",
+    "lastName": "string|null",
+    "avatar": "string|null",
+    "emailVerified": "boolean",
+    "createdAt": "ISO string",
+    "updatedAt": "ISO string"
+  },
+  "sessionId": "string"
+}
+
+Status Codes: 200 (success), 401 (invalid credentials), 422 (validation error)
+
+## User Logout
+POST /auth/logout
+- Description: Invalidate current session
+- Authentication: Required (session cookie)
+- Response: { "success": true }
+- Status Codes: 200 (success), 401 (not authenticated)
+
+## Get User Profile
+GET /auth/me
+- Description: Get current user profile information
+- Authentication: Required (session cookie)
+
+Response (200):
+{
+  "user": {
+    "id": "string",
+    "username": "string",
+    "email": "string",
+    "firstName": "string|null",
+    "lastName": "string|null",
+    "avatar": "string|null",
+    "emailVerified": "boolean",
+    "createdAt": "ISO string",
+    "updatedAt": "ISO string"
+  }
+}
+
+Status Codes: 200 (success), 401 (not authenticated)
+
+## OAuth Authentication (Google)
+GET /auth/google
+- Description: Initiate Google OAuth flow
+- Authentication: None
+- Response: Redirects to Google OAuth consent screen
+
+GET /auth/google/callback
+- Description: Handle Google OAuth callback
+- Authentication: None (OAuth flow)
+- Response: Redirects to UI with session established
+
+## OAuth Authentication (GitHub)
+GET /auth/github
+- Description: Initiate GitHub OAuth flow
+- Authentication: None
+- Response: Redirects to GitHub OAuth consent screen
+
+GET /auth/github/callback
+- Description: Handle GitHub OAuth callback
+- Authentication: None (OAuth flow)
+- Response: Redirects to UI with session established
+
+================================================================================
+CONVERSATION ENDPOINTS (/conversations)
+================================================================================
+
+## Get User Conversations
+GET /conversations?userId={userId}&limit={limit}&offset={offset}
+- Description: Retrieve conversations for a specific user with pagination
+- Authentication: Required (session cookie)
+
+Query Parameters:
+- userId: string (required) - ID of the user
+- limit: number (optional, default: 50) - Number of conversations to return
+- offset: number (optional, default: 0) - Number of conversations to skip
+
+Response (200):
+{
+  "conversations": [
+    {
+      "id": "string",
+      "title": "string",
+      "type": "DIRECT|GROUP",
+      "createdAt": "ISO string",
+      "updatedAt": "ISO string",
+      "participants": [
+        {
+          "id": "string",
+          "userId": "string",
+          "role": "ADMIN|MODERATOR|MEMBER",
+          "joinedAt": "ISO string",
+          "user": {
+            "id": "string",
+            "username": "string",
+            "avatar": "string|null"
+          }
+        }
+      ],
+      "messages": [
+        {
+          "id": "string",
+          "content": "string",
+          "authorId": "string",
+          "createdAt": "ISO string",
+          "author": {
+            "id": "string",
+            "username": "string"
+          }
+        }
+      ],
+      "_count": {
+        "messages": number
+      }
+    }
+  ]
+}
+
+Status Codes: 200 (success), 401 (not authenticated), 422 (validation error)
+
+## Get Conversation by ID
+GET /conversations/{id}?userId={userId}
+- Description: Retrieve specific conversation with messages and participants
+- Authentication: Required (session cookie)
+
+URL Parameters:
+- id: string (required) - Conversation ID
+
+Query Parameters:
+- userId: string (required) - ID of the requesting user
+
+Response (200):
+{
+  "conversation": {
+    "id": "string",
+    "title": "string",
+    "type": "DIRECT|GROUP",
+    "createdAt": "ISO string",
+    "updatedAt": "ISO string",
+    "participants": [
+      {
+        "id": "string",
+        "userId": "string",
+        "role": "ADMIN|MODERATOR|MEMBER",
+        "joinedAt": "ISO string",
+        "user": {
+          "id": "string",
+          "username": "string",
+          "avatar": "string|null"
+        }
+      }
+    ],
+    "messages": [
+      {
+        "id": "string",
+        "content": "string",
+        "authorId": "string",
+        "conversationId": "string",
+        "parentId": "string|null",
+        "createdAt": "ISO string",
+        "updatedAt": "ISO string",
+        "author": {
+          "id": "string",
+          "username": "string"
+        }
+      }
+    ],
+    "_count": {
+      "messages": number
+    }
+  }
+}
+
+Status Codes: 200 (success), 401 (not authenticated), 403 (forbidden), 404 (not found)
+
+## Create Conversation
+POST /conversations?userId={userId}
+- Description: Create a new conversation
+- Authentication: Required (session cookie)
+- Content-Type: application/json
+
+Query Parameters:
+- userId: string (required) - ID of the creating user
+
+Request Body:
+{
+  "title": "string (required)",
+  "type": "DIRECT|GROUP (required)",
+  "participantIds": ["string"] (optional, array of user IDs)
+}
+
+Response (200):
+{
+  "conversation": {
+    "id": "string",
+    "title": "string",
+    "type": "DIRECT|GROUP",
+    "createdAt": "ISO string",
+    "updatedAt": "ISO string"
+  }
+}
+
+Status Codes: 200 (success), 401 (not authenticated), 422 (validation error)
+
+## Update Conversation
+PUT /conversations/{id}?userId={userId}
+- Description: Update conversation details (admin/moderator only)
+- Authentication: Required (session cookie)
+- Content-Type: application/json
+
+URL Parameters:
+- id: string (required) - Conversation ID
+
+Query Parameters:
+- userId: string (required) - ID of the requesting user
+
+Request Body:
+{
+  "title": "string (required)"
+}
+
+Response (200):
+{
+  "conversation": {
+    "id": "string",
+    "title": "string",
+    "type": "DIRECT|GROUP",
+    "createdAt": "ISO string",
+    "updatedAt": "ISO string"
+  }
+}
+
+Status Codes: 200 (success), 401 (not authenticated), 403 (forbidden), 404 (not found)
+
+## Delete Conversation
+DELETE /conversations/{id}?userId={userId}
+- Description: Delete conversation (admin only)
+- Authentication: Required (session cookie)
+
+URL Parameters:
+- id: string (required) - Conversation ID
+
+Query Parameters:
+- userId: string (required) - ID of the requesting user
+
+Response (200):
+{
+  "success": true
+}
+
+Status Codes: 200 (success), 401 (not authenticated), 403 (forbidden), 404 (not found)
+
+## Add Conversation Participant
+POST /conversations/{id}/participants?userId={userId}
+- Description: Add participant to conversation (admin/moderator only)
+- Authentication: Required (session cookie)
+- Content-Type: application/json
+
+URL Parameters:
+- id: string (required) - Conversation ID
+
+Query Parameters:
+- userId: string (required) - ID of the requesting user
+
+Request Body:
+{
+  "userId": "string (required)",
+  "role": "ADMIN|MODERATOR|MEMBER (optional, default: MEMBER)"
+}
+
+Response (200):
+{
+  "participants": [
+    {
+      "id": "string",
+      "userId": "string",
+      "conversationId": "string",
+      "role": "ADMIN|MODERATOR|MEMBER",
+      "joinedAt": "ISO string"
+    }
+  ]
+}
+
+Status Codes: 200 (success), 401 (not authenticated), 403 (forbidden), 422 (validation error)
+
+## Remove Conversation Participant
+DELETE /conversations/{id}/participants/{participantId}?userId={userId}
+- Description: Remove participant from conversation (admin/moderator only)
+- Authentication: Required (session cookie)
+
+URL Parameters:
+- id: string (required) - Conversation ID
+- participantId: string (required) - Participant ID to remove
+
+Query Parameters:
+- userId: string (required) - ID of the requesting user
+
+Response (200):
+{
+  "participants": [
+    {
+      "id": "string",
+      "userId": "string",
+      "conversationId": "string",
+      "role": "ADMIN|MODERATOR|MEMBER",
+      "joinedAt": "ISO string"
+    }
+  ]
+}
+
+Status Codes: 200 (success), 401 (not authenticated), 403 (forbidden), 404 (not found)
+
+================================================================================
+MESSAGE ENDPOINTS (/messages)
+================================================================================
+
+## Get Messages
+GET /messages?conversationId={conversationId}&userId={userId}&limit={limit}&offset={offset}&before={before}&after={after}
+- Description: Retrieve messages from a conversation with pagination
+- Authentication: Required (session cookie)
+
+Query Parameters:
+- conversationId: string (required) - ID of the conversation
+- userId: string (required) - ID of the requesting user
+- limit: number (optional, default: 50) - Number of messages to return
+- offset: number (optional, default: 0) - Number of messages to skip
+- before: string (optional) - ISO timestamp for messages before this time
+- after: string (optional) - ISO timestamp for messages after this time
+
+Response (200):
+{
+  "messages": [
+    {
+      "id": "string",
+      "content": "string",
+      "authorId": "string",
+      "conversationId": "string",
+      "parentId": "string|null",
+      "createdAt": "ISO string",
+      "updatedAt": "ISO string",
+      "author": {
+        "id": "string",
+        "username": "string"
+      }
+    }
+  ]
+}
+
+Status Codes: 200 (success), 401 (not authenticated), 403 (forbidden), 422 (validation error)
+
+## Get Message by ID
+GET /messages/{id}?userId={userId}
+- Description: Retrieve specific message by ID
+- Authentication: Required (session cookie)
+
+URL Parameters:
+- id: string (required) - Message ID
+
+Query Parameters:
+- userId: string (required) - ID of the requesting user
+
+Response (200):
+{
+  "message": {
+    "id": "string",
+    "content": "string",
+    "authorId": "string",
+    "conversationId": "string",
+    "parentId": "string|null",
+    "createdAt": "ISO string",
+    "updatedAt": "ISO string",
+    "author": {
+      "id": "string",
+      "username": "string"
+    }
+  }
+}
+
+Status Codes: 200 (success), 401 (not authenticated), 403 (forbidden), 404 (not found)
+
+## Send Message
+POST /messages
+- Description: Send a new message to a conversation
+- Authentication: Required (session cookie)
+- Content-Type: application/json
+
+Request Body:
+{
+  "content": "string (required)",
+  "conversationId": "string (required)",
+  "authorId": "string (required)",
+  "parentId": "string (optional, for replies)"
+}
+
+Response (200):
+{
+  "message": {
+    "id": "string",
+    "content": "string",
+    "authorId": "string",
+    "conversationId": "string",
+    "parentId": "string|null",
+    "createdAt": "ISO string",
+    "updatedAt": "ISO string"
+  }
+}
+
+Status Codes: 200 (success), 401 (not authenticated), 403 (forbidden), 422 (validation error)
+
+## Update Message
+PUT /messages/{id}
+- Description: Update message content (author only)
+- Authentication: Required (session cookie)
+- Content-Type: application/json
+
+URL Parameters:
+- id: string (required) - Message ID
+
+Request Body:
+{
+  "content": "string (required)",
+  "authorId": "string (required)"
+}
+
+Response (200):
+{
+  "message": {
+    "id": "string",
+    "content": "string",
+    "authorId": "string",
+    "conversationId": "string",
+    "parentId": "string|null",
+    "createdAt": "ISO string",
+    "updatedAt": "ISO string"
+  }
+}
+
+Status Codes: 200 (success), 401 (not authenticated), 403 (forbidden), 404 (not found)
+
+## Delete Message
+DELETE /messages/{id}
+- Description: Delete message (author only)
+- Authentication: Required (session cookie)
+
+URL Parameters:
+- id: string (required) - Message ID
+
+Request Body:
+{
+  "authorId": "string (required)"
+}
+
+Response (200):
+{
+  "success": true
+}
+
+Status Codes: 200 (success), 401 (not authenticated), 403 (forbidden), 404 (not found)
+
+## Search Messages
+GET /messages/search?conversationId={conversationId}&userId={userId}&query={query}&limit={limit}&offset={offset}
+- Description: Search messages within a conversation
+- Authentication: Required (session cookie)
+
+Query Parameters:
+- conversationId: string (required) - ID of the conversation
+- userId: string (required) - ID of the requesting user
+- query: string (required) - Search query
+- limit: number (optional, default: 50) - Number of results to return
+- offset: number (optional, default: 0) - Number of results to skip
+
+Response (200):
+{
+  "messages": [
+    {
+      "id": "string",
+      "content": "string",
+      "authorId": "string",
+      "conversationId": "string",
+      "parentId": "string|null",
+      "createdAt": "ISO string",
+      "updatedAt": "ISO string",
+      "author": {
+        "id": "string",
+        "username": "string"
+      }
+    }
+  ]
+}
+
+Status Codes: 200 (success), 401 (not authenticated), 403 (forbidden), 422 (validation error)
+
+================================================================================
+WEBSOCKET ENDPOINTS
+================================================================================
+
+## WebSocket Connection
+WS /ws
+- Description: Establish WebSocket connection for real-time features
+- Authentication: Required (session cookie or token in connection)
+- Protocol: WebSocket
+
+Connection Process:
+1. Client connects to /ws endpoint
+2. Server validates session/authentication
+3. Connection is established and stored
+4. Client can send/receive real-time messages
+
+## WebSocket Message Types
+
+### Join Conversation
+Client → Server:
+{
+  "type": "join_conversation",
+  "conversationId": "string"
+}
+
+Server → Client:
+{
+  "type": "joined_conversation",
+  "conversationId": "string",
+  "success": true
+}
+
+### Leave Conversation
+Client → Server:
+{
+  "type": "leave_conversation",
+  "conversationId": "string"
+}
+
+Server → Client:
+{
+  "type": "left_conversation",
+  "conversationId": "string",
+  "success": true
+}
+
+### Typing Indicators
+Client → Server (Start Typing):
+{
+  "type": "typing_start",
+  "conversationId": "string"
+}
+
+Client → Server (Stop Typing):
+{
+  "type": "typing_stop",
+  "conversationId": "string"
+}
+
+Server → Other Clients:
+{
+  "type": "user_typing",
+  "conversationId": "string",
+  "userId": "string",
+  "username": "string",
+  "isTyping": true|false
+}
+
+### Real-time Messages
+Client → Server:
+{
+  "type": "message",
+  "conversationId": "string",
+  "data": {
+    "content": "string",
+    "parentId": "string|null"
+  }
+}
+
+Server → All Conversation Participants:
+{
+  "type": "new_message",
+  "conversationId": "string",
+  "message": {
+    "id": "string",
+    "content": "string",
+    "authorId": "string",
+    "conversationId": "string",
+    "parentId": "string|null",
+    "createdAt": "ISO string",
+    "author": {
+      "id": "string",
+      "username": "string"
+    }
+  }
+}
+
+### Error Messages
+Server → Client:
+{
+  "type": "error",
+  "error": "string",
+  "conversationId": "string|null"
+}
+
+================================================================================
+ERROR RESPONSES
+================================================================================
+
+All error responses follow a consistent format:
+
+## Validation Errors (422)
+{
+  "error": "Validation failed",
+  "details": {
+    "field_name": ["error message 1", "error message 2"]
+  }
+}
+
+## Authorization Errors (401)
+{
+  "error": "Authentication required"
+}
+
+## Forbidden Errors (403)
+{
+  "error": "Access denied to this resource"
+}
+
+## Not Found Errors (404)
+{
+  "error": "Resource not found"
+}
+
+## Server Errors (500)
+{
+  "error": "Internal server error"
+}
+
+================================================================================
+DATA MODELS
+================================================================================
+
+## User Model
+{
+  "id": "string (UUID)",
+  "username": "string (unique, 3-50 chars)",
+  "email": "string (unique, valid email)",
+  "firstName": "string|null",
+  "lastName": "string|null",
+  "avatar": "string|null (URL)",
+  "emailVerified": "boolean",
+  "createdAt": "ISO timestamp",
+  "updatedAt": "ISO timestamp"
+}
+
+## Conversation Model
+{
+  "id": "string (UUID)",
+  "title": "string",
+  "type": "DIRECT|GROUP",
+  "createdAt": "ISO timestamp",
+  "updatedAt": "ISO timestamp",
+  "participants": "ConversationParticipant[]",
+  "messages": "Message[]",
+  "_count": {
+    "messages": "number"
+  }
+}
+
+## ConversationParticipant Model
+{
+  "id": "string (UUID)",
+  "userId": "string (UUID)",
+  "conversationId": "string (UUID)",
+  "role": "ADMIN|MODERATOR|MEMBER",
+  "joinedAt": "ISO timestamp",
+  "user": "User (when included)"
+}
+
+## Message Model
+{
+  "id": "string (UUID)",
+  "content": "string",
+  "authorId": "string (UUID)",
+  "conversationId": "string (UUID)",
+  "parentId": "string|null (UUID, for replies)",
+  "createdAt": "ISO timestamp",
+  "updatedAt": "ISO timestamp",
+  "author": "User (when included)"
+}
+
+================================================================================
+USAGE EXAMPLES FOR UI DEVELOPMENT
+================================================================================
+
+## Authentication Flow
+```javascript
+// 1. Register new user
+const registerResponse = await fetch('/auth/register', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include', // Important for cookies
+  body: JSON.stringify({
+    username: 'johndoe',
+    email: 'john@example.com',
+    password: 'securepassword123',
+    firstName: 'John',
+    lastName: 'Doe'
+  })
+});
+
+// 2. Login existing user
+const loginResponse = await fetch('/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({
+    email: 'john@example.com',
+    password: 'securepassword123'
+  })
+});
+
+// 3. Get current user profile
+const profileResponse = await fetch('/auth/me', {
+  credentials: 'include'
+});
+
+// 4. Logout
+const logoutResponse = await fetch('/auth/logout', {
+  method: 'POST',
+  credentials: 'include'
+});
+```
+
+## Conversation Management
+```javascript
+// 1. Create new conversation
+const createResponse = await fetch('/conversations?userId=user123', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({
+    title: 'Project Discussion',
+    type: 'GROUP',
+    participantIds: ['user456', 'user789']
+  })
+});
+
+// 2. Get user conversations
+const conversationsResponse = await fetch('/conversations?userId=user123&limit=20&offset=0', {
+  credentials: 'include'
+});
+
+// 3. Get specific conversation
+const conversationResponse = await fetch('/conversations/conv123?userId=user123', {
+  credentials: 'include'
+});
+```
+
+## Message Operations
+```javascript
+// 1. Send message
+const sendResponse = await fetch('/messages', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({
+    content: 'Hello everyone!',
+    conversationId: 'conv123',
+    authorId: 'user123'
+  })
+});
+
+// 2. Get messages from conversation
+const messagesResponse = await fetch('/messages?conversationId=conv123&userId=user123&limit=50', {
+  credentials: 'include'
+});
+
+// 3. Search messages
+const searchResponse = await fetch('/messages/search?conversationId=conv123&userId=user123&query=hello', {
+  credentials: 'include'
+});
+```
+
+## WebSocket Integration
+```javascript
+// 1. Establish WebSocket connection
+const ws = new WebSocket('ws://localhost:3000/ws');
+
+ws.onopen = () => {
+  console.log('Connected to WebSocket');
+  
+  // Join a conversation
+  ws.send(JSON.stringify({
+    type: 'join_conversation',
+    conversationId: 'conv123'
+  }));
+};
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  
+  switch (data.type) {
+    case 'new_message':
+      // Handle new message
+      console.log('New message:', data.message);
+      break;
+    case 'user_typing':
+      // Handle typing indicator
+      console.log('User typing:', data.username, data.isTyping);
+      break;
+    case 'joined_conversation':
+      console.log('Joined conversation:', data.conversationId);
+      break;
+  }
+};
+
+// 2. Send real-time message
+ws.send(JSON.stringify({
+  type: 'message',
+  conversationId: 'conv123',
+  data: {
+    content: 'Hello from WebSocket!',
+    parentId: null
+  }
+}));
+
+// 3. Send typing indicator
+ws.send(JSON.stringify({
+  type: 'typing_start',
+  conversationId: 'conv123'
+}));
+```
+
+================================================================================
+DEVELOPMENT NOTES
+================================================================================
+
+## Technology Stack
+- Runtime: Bun 1.2.19+
+- Framework: ElysiaJS
+- Database: PostgreSQL with Prisma ORM
+- Authentication: Lucia with cookie sessions
+- WebSockets: Native ElysiaJS WebSocket support
+- Validation: ElysiaJS TypeBox schemas
+- Documentation: Auto-generated Swagger/OpenAPI
+
+## Environment Variables
+- DATABASE_URL: PostgreSQL connection string
+- JWT_SECRET: Secret for JWT signing
+- UI_URL: Frontend URL for CORS (default: http://localhost:3000)
+- NODE_ENV: Environment (development/production)
+
+## Key Features
+- Session-based authentication with HttpOnly cookies
+- Real-time messaging via WebSockets
+- Participant-based conversation access control
+- Message threading with parentId relationships
+- Pagination support on all list endpoints
+- Full-text search for messages
+- OAuth integration (Google, GitHub)
+- TypeScript-first API with automatic validation
+- Comprehensive error handling and status codes
+
+## Security Considerations
+- All authenticated endpoints validate session cookies
+- Conversation participants verified before message access
+- CORS configured for frontend domain
+- HttpOnly cookies prevent XSS attacks
+- Password hashing with bcrypt
+- SQL injection protection via Prisma ORM
+
+================================================================================
+END OF API REFERENCE
+================================================================================

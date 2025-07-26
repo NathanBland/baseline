@@ -33,7 +33,8 @@ export namespace AuthModel {
       username: t.String(),
       email: t.String()
     }),
-    sessionId: t.String()
+    sessionId: t.String(),
+    token: t.String()
   })
   export type LoginResponse = typeof loginResponse.static
 

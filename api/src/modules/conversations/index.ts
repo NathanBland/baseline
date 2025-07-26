@@ -17,9 +17,9 @@ export const conversationModule = new Elysia({ prefix: '/conversations' })
         throw status(401, 'Invalid session')
       }
 
-      const { userId, limit = '50', offset = '0' } = query
+      const { limit = '50', offset = '0' } = query
       return await ConversationService.getConversations(
-        userId,
+        sessionValidation.user.id,
         parseInt(limit),
         parseInt(offset)
       )
@@ -39,7 +39,7 @@ export const conversationModule = new Elysia({ prefix: '/conversations' })
   )
   .get(
     '/:id',
-    async ({ params: { id }, query: { userId }, cookie: { session } }) => {
+    async ({ params: { id }, cookie: { session } }) => {
       if (!session.value) {
         throw status(401, 'Authentication required')
       }
@@ -50,11 +50,10 @@ export const conversationModule = new Elysia({ prefix: '/conversations' })
         throw status(401, 'Invalid session')
       }
 
-      return await ConversationService.getConversationById(id, userId)
+      return await ConversationService.getConversationById(id, sessionValidation.user.id)
     },
     {
       params: t.Object({ id: t.String() }),
-      query: t.Object({ userId: t.String() }),
       response: {
         200: ConversationModel.conversationResponse,
         404: ConversationModel.notFoundError,
@@ -69,7 +68,7 @@ export const conversationModule = new Elysia({ prefix: '/conversations' })
   )
   .post(
     '/',
-    async ({ body, query: { userId }, cookie: { session } }) => {
+    async ({ body, cookie: { session } }) => {
       if (!session.value) {
         throw status(401, 'Authentication required')
       }
@@ -80,11 +79,10 @@ export const conversationModule = new Elysia({ prefix: '/conversations' })
         throw status(401, 'Invalid session')
       }
 
-      return await ConversationService.createConversation(body, userId)
+      return await ConversationService.createConversation(body, sessionValidation.user.id)
     },
     {
       body: ConversationModel.createConversationBody,
-      query: t.Object({ userId: t.String() }),
       response: {
         200: ConversationModel.conversationResponse,
         400: ConversationModel.conversationError,
@@ -99,7 +97,7 @@ export const conversationModule = new Elysia({ prefix: '/conversations' })
   )
   .put(
     '/:id',
-    async ({ params: { id }, body, query: { userId }, cookie: { session } }) => {
+    async ({ params: { id }, body, cookie: { session } }) => {
       if (!session.value) {
         throw status(401, 'Authentication required')
       }
@@ -110,12 +108,11 @@ export const conversationModule = new Elysia({ prefix: '/conversations' })
         throw status(401, 'Invalid session')
       }
 
-      return await ConversationService.updateConversation(id, body, userId)
+      return await ConversationService.updateConversation(id, body, sessionValidation.user.id)
     },
     {
       params: t.Object({ id: t.String() }),
       body: ConversationModel.updateConversationBody,
-      query: t.Object({ userId: t.String() }),
       response: {
         200: ConversationModel.conversationResponse,
         403: ConversationModel.forbiddenError,
@@ -130,12 +127,21 @@ export const conversationModule = new Elysia({ prefix: '/conversations' })
   )
   .delete(
     '/:id',
-    async ({ params: { id }, query: { userId } }) => {
-      return await ConversationService.deleteConversation(id, userId)
+    async ({ params: { id }, cookie: { session } }) => {
+      if (!session.value) {
+        throw status(401, 'Authentication required')
+      }
+
+      // Validate session and get user
+      const sessionValidation = await AuthService.validateSession(session.value)
+      if (!sessionValidation) {
+        throw status(401, 'Invalid session')
+      }
+
+      return await ConversationService.deleteConversation(id, sessionValidation.user.id)
     },
     {
       params: t.Object({ id: t.String() }),
-      query: t.Object({ userId: t.String() }),
       response: {
         200: t.Object({ success: t.Literal(true) }),
         403: ConversationModel.forbiddenError,
@@ -150,13 +156,22 @@ export const conversationModule = new Elysia({ prefix: '/conversations' })
   )
   .post(
     '/:id/participants',
-    async ({ params: { id }, body, query: { userId } }) => {
-      return await ConversationService.addParticipant(id, body, userId)
+    async ({ params: { id }, body, cookie: { session } }) => {
+      if (!session.value) {
+        throw status(401, 'Authentication required')
+      }
+
+      // Validate session and get user
+      const sessionValidation = await AuthService.validateSession(session.value)
+      if (!sessionValidation) {
+        throw status(401, 'Invalid session')
+      }
+
+      return await ConversationService.addParticipant(id, body, sessionValidation.user.id)
     },
     {
       params: t.Object({ id: t.String() }),
       body: ConversationModel.addParticipantBody,
-      query: t.Object({ userId: t.String() }),
       response: {
         200: ConversationModel.participantResponse,
         400: ConversationModel.conversationError,
@@ -171,12 +186,21 @@ export const conversationModule = new Elysia({ prefix: '/conversations' })
   )
   .delete(
     '/:id/participants/:userId',
-    async ({ params: { id, userId: participantUserId }, query: { userId } }) => {
-      return await ConversationService.removeParticipant(id, participantUserId, userId)
+    async ({ params: { id, userId: participantUserId }, cookie: { session } }) => {
+      if (!session.value) {
+        throw status(401, 'Authentication required')
+      }
+
+      // Validate session and get user
+      const sessionValidation = await AuthService.validateSession(session.value)
+      if (!sessionValidation) {
+        throw status(401, 'Invalid session')
+      }
+
+      return await ConversationService.removeParticipant(id, participantUserId, sessionValidation.user.id)
     },
     {
       params: t.Object({ id: t.String(), userId: t.String() }),
-      query: t.Object({ userId: t.String() }),
       response: {
         200: t.Object({ success: t.Literal(true) }),
         403: ConversationModel.forbiddenError,
