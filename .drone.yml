@@ -34,21 +34,16 @@ steps:
         - pull_request
 
   - name: build-api
-    image: plugins/docker
-    environment:
-      DOCKER_HOST: tcp://docker:2375
-    settings:
-      repo: registry.aqueous.network/baseline-api
-      tags:
-        - ${DRONE_COMMIT_SHA:0:8}
-        - ${DRONE_BRANCH}
-        - latest
-      dockerfile: api/Dockerfile
-      context: api
-      target: production
-      build_args:
-        - NODE_ENV=production
-      insecure: true
+    image: docker:20.10.16-cli
+    volumes:
+      - name: docker-sock
+        path: /var/run/docker.sock
+    commands:
+      - cd api
+      - docker build -t registry.aqueous.network/baseline-api:${DRONE_COMMIT_SHA:0:8} -t registry.aqueous.network/baseline-api:${DRONE_BRANCH} -t registry.aqueous.network/baseline-api:latest --target production .
+      - docker push registry.aqueous.network/baseline-api:${DRONE_COMMIT_SHA:0:8}
+      - docker push registry.aqueous.network/baseline-api:${DRONE_BRANCH}
+      - docker push registry.aqueous.network/baseline-api:latest
     when:
       event:
         - push
@@ -57,21 +52,16 @@ steps:
         - develop
 
   - name: build-ui
-    image: plugins/docker
-    environment:
-      DOCKER_HOST: tcp://docker:2375
-    settings:
-      repo: registry.aqueous.network/baseline-ui
-      tags:
-        - ${DRONE_COMMIT_SHA:0:8}
-        - ${DRONE_BRANCH}
-        - latest
-      dockerfile: ui/Dockerfile
-      context: ui
-      target: production
-      build_args:
-        - NODE_ENV=production
-      insecure: true
+    image: docker:20.10.16-cli
+    volumes:
+      - name: docker-sock
+        path: /var/run/docker.sock
+    commands:
+      - cd ui
+      - docker build -t registry.aqueous.network/baseline-ui:${DRONE_COMMIT_SHA:0:8} -t registry.aqueous.network/baseline-ui:${DRONE_BRANCH} -t registry.aqueous.network/baseline-ui:latest --target production .
+      - docker push registry.aqueous.network/baseline-ui:${DRONE_COMMIT_SHA:0:8}
+      - docker push registry.aqueous.network/baseline-ui:${DRONE_BRANCH}
+      - docker push registry.aqueous.network/baseline-ui:latest
     when:
       event:
         - push
@@ -172,17 +162,10 @@ services:
     ports:
       - 6379
 
-  - name: docker
-    image: docker:20.10.16-dind
-    privileged: true
-    environment:
-      DOCKER_DRIVER: overlay2
-      DOCKER_TLS_CERTDIR: ""
-    command:
-      - dockerd
-      - --host=unix:///var/run/docker.sock
-      - --host=tcp://0.0.0.0:2375
-      - --insecure-registry=registry.aqueous.network
+volumes:
+  - name: docker-sock
+    host:
+      path: /var/run/docker.sock
 
 ---
 kind: secret
