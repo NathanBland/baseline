@@ -6,6 +6,7 @@ environment:
   DOCKER_BUILDKIT: 1
 
 steps:
+  # Parallel test and build steps for faster CI/CD
   - name: test-api
     image: oven/bun:1
     commands:
@@ -35,7 +36,7 @@ steps:
   - name: build-api
     image: plugins/docker
     settings:
-      repo: baseline-api
+      repo: registry.aqueous.network/baseline-api
       tags:
         - ${DRONE_COMMIT_SHA:0:8}
         - ${DRONE_BRANCH}
@@ -45,7 +46,6 @@ steps:
       target: production
       build_args:
         - NODE_ENV=production
-      registry: registry.aqueous.network
       insecure: true
     when:
       event:
@@ -57,7 +57,7 @@ steps:
   - name: build-ui
     image: plugins/docker
     settings:
-      repo: baseline-ui
+      repo: registry.aqueous.network/baseline-ui
       tags:
         - ${DRONE_COMMIT_SHA:0:8}
         - ${DRONE_BRANCH}
@@ -67,7 +67,6 @@ steps:
       target: production
       build_args:
         - NODE_ENV=production
-      registry: registry.aqueous.network
       insecure: true
     when:
       event:
@@ -78,6 +77,9 @@ steps:
 
   - name: deploy-staging
     image: curlimages/curl
+    depends_on:
+      - build-api
+      - build-ui
     commands:
       - |
         curl -X POST "${PORTAINER_URL}/api/stacks/${PORTAINER_STACK_ID_STAGING}/git/redeploy" \
@@ -95,6 +97,9 @@ steps:
 
   - name: deploy-production
     image: curlimages/curl
+    depends_on:
+      - build-api
+      - build-ui
     commands:
       - |
         curl -X POST "${PORTAINER_URL}/api/stacks/${PORTAINER_STACK_ID_PRODUCTION}/git/redeploy" \
