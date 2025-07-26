@@ -142,9 +142,11 @@ make test-coverage
 The project uses a complete CI/CD pipeline with DroneCI and Portainer for automated deployment to production environments.
 
 **Deployment Flow:**
-1. Push to `develop` → DroneCI tests → Deploy to staging
-2. Push to `main` → DroneCI tests → Build production images → Deploy to production
+1. Push to `develop` → DroneCI tests (warnings only) → Deploy to staging
+2. Push to `main` → DroneCI tests (warnings only) → Build production images → Deploy to production
 3. Portainer pulls latest images and updates stack automatically
+
+**Note**: Test failures produce warnings but don't block deployment. Only build failures will stop the pipeline.
 
 ### Production Environment Setup
 

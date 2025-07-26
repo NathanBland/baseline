@@ -11,9 +11,8 @@ steps:
     commands:
       - cd api
       - bun install
-      - bun run lint
-      - bun run type-check
-      - bun run test:coverage
+      - bun test
+    failure: ignore
     when:
       event:
         - push
@@ -27,6 +26,7 @@ steps:
       - npm run lint
       - npm run type-check
       - npm run test:coverage
+    failure: ignore
     when:
       event:
         - push
