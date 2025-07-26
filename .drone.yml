@@ -20,13 +20,13 @@ steps:
         - pull_request
 
   - name: test-ui
-    image: oven/bun:1
+    image: node:20-alpine
     commands:
       - cd ui
-      - bun install
-      - bun run lint
-      - bun run type-check
-      - bun run test:coverage
+      - npm ci
+      - npm run lint
+      - npm run type-check
+      - npm run test:coverage
     when:
       event:
         - push
@@ -86,11 +86,12 @@ steps:
     image: curlimages/curl
     commands:
       - |
-        curl -X POST "${PORTAINER_WEBHOOK_STAGING}" \
+        curl -X POST "${PORTAINER_URL}/api/stacks/${PORTAINER_STACK_ID_STAGING}/git/redeploy" \
+          -H "X-API-Key: ${PORTAINER_API_KEY}" \
           -H "Content-Type: application/json" \
           -d '{
-            "tag": "${DRONE_COMMIT_SHA:0:8}",
-            "environment": "staging"
+            "repositoryReferenceName": "refs/heads/develop",
+            "repositoryAuthentication": false
           }'
     when:
       event:
@@ -102,11 +103,12 @@ steps:
     image: curlimages/curl
     commands:
       - |
-        curl -X POST "${PORTAINER_WEBHOOK_PRODUCTION}" \
+        curl -X POST "${PORTAINER_URL}/api/stacks/${PORTAINER_STACK_ID_PRODUCTION}/git/redeploy" \
+          -H "X-API-Key: ${PORTAINER_API_KEY}" \
           -H "Content-Type: application/json" \
           -d '{
-            "tag": "${DRONE_COMMIT_SHA:0:8}",
-            "environment": "production"
+            "repositoryReferenceName": "refs/heads/main",
+            "repositoryAuthentication": false
           }'
     when:
       event:
