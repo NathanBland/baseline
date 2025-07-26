@@ -36,7 +36,7 @@ steps:
   - name: build-api
     image: plugins/docker
     settings:
-      repo: baseline-api
+      repo: registry.aqueous.network/baseline-api
       tags:
         - ${DRONE_COMMIT_SHA:0:8}
         - ${DRONE_BRANCH}
@@ -46,7 +46,6 @@ steps:
       target: production
       build_args:
         - NODE_ENV=production
-      registry: registry.aqueous.network
       insecure: true
     when:
       event:
@@ -58,7 +57,7 @@ steps:
   - name: build-ui
     image: plugins/docker
     settings:
-      repo: baseline-ui
+      repo: registry.aqueous.network/baseline-ui
       tags:
         - ${DRONE_COMMIT_SHA:0:8}
         - ${DRONE_BRANCH}
@@ -68,7 +67,6 @@ steps:
       target: production
       build_args:
         - NODE_ENV=production
-      registry: registry.aqueous.network
       insecure: true
     when:
       event:
