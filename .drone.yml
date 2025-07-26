@@ -36,7 +36,7 @@ steps:
   - name: build-api
     image: plugins/docker
     settings:
-      repo: registry.aqueous.network/baseline-api
+      repo: baseline-api
       tags:
         - ${DRONE_COMMIT_SHA:0:8}
         - ${DRONE_BRANCH}
@@ -46,6 +46,7 @@ steps:
       target: production
       build_args:
         - NODE_ENV=production
+      registry: registry.aqueous.network
       insecure: true
     when:
       event:
@@ -57,7 +58,7 @@ steps:
   - name: build-ui
     image: plugins/docker
     settings:
-      repo: registry.aqueous.network/baseline-ui
+      repo: baseline-ui
       tags:
         - ${DRONE_COMMIT_SHA:0:8}
         - ${DRONE_BRANCH}
@@ -67,6 +68,7 @@ steps:
       target: production
       build_args:
         - NODE_ENV=production
+      registry: registry.aqueous.network
       insecure: true
     when:
       event:
@@ -117,6 +119,9 @@ steps:
 
   - name: notify-success
     image: plugins/slack
+    depends_on:
+      - deploy-staging
+      - deploy-production
     settings:
       webhook:
         from_secret: slack_webhook
@@ -139,6 +144,9 @@ steps:
 
   - name: notify-failure
     image: plugins/slack
+    depends_on:
+      - deploy-staging
+      - deploy-production
     settings:
       webhook:
         from_secret: slack_webhook
