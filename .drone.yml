@@ -35,7 +35,7 @@ steps:
   - name: build-api
     image: plugins/docker
     settings:
-      repo: ${DRONE_REPO_NAME}-api
+      repo: baseline-api
       tags:
         - ${DRONE_COMMIT_SHA:0:8}
         - ${DRONE_BRANCH}
@@ -45,11 +45,8 @@ steps:
       target: production
       build_args:
         - NODE_ENV=production
-      registry: ${DOCKER_REGISTRY}
-      username:
-        from_secret: docker_username
-      password:
-        from_secret: docker_password
+      registry: registry.aqueous.network
+      insecure: true
     when:
       event:
         - push
@@ -60,7 +57,7 @@ steps:
   - name: build-ui
     image: plugins/docker
     settings:
-      repo: ${DRONE_REPO_NAME}-ui
+      repo: baseline-ui
       tags:
         - ${DRONE_COMMIT_SHA:0:8}
         - ${DRONE_BRANCH}
@@ -70,11 +67,8 @@ steps:
       target: production
       build_args:
         - NODE_ENV=production
-      registry: ${DOCKER_REGISTRY}
-      username:
-        from_secret: docker_username
-      password:
-        from_secret: docker_password
+      registry: registry.aqueous.network
+      insecure: true
     when:
       event:
         - push
@@ -168,20 +162,6 @@ services:
     image: redis:7-alpine
     ports:
       - 6379
-
----
-kind: secret
-name: docker_username
-get:
-  path: docker
-  name: username
-
----
-kind: secret
-name: docker_password
-get:
-  path: docker
-  name: password
 
 ---
 kind: secret

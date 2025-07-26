@@ -34,7 +34,7 @@ services:
       - baseline-network
 
   api:
-    image: ${DOCKER_REGISTRY}/${DOCKER_REPO_NAME}-api:${IMAGE_TAG:-latest}
+    image: registry.aqueous.network/baseline-api:${IMAGE_TAG:-latest}
     container_name: baseline-api
     environment:
       NODE_ENV: production
@@ -63,7 +63,7 @@ services:
       retries: 3
 
   ui:
-    image: ${DOCKER_REGISTRY}/${DOCKER_REPO_NAME}-ui:${IMAGE_TAG:-latest}
+    image: registry.aqueous.network/baseline-ui:${IMAGE_TAG:-latest}
     container_name: baseline-ui
     environment:
       NODE_ENV: production

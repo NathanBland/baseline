@@ -152,10 +152,6 @@ The project uses a complete CI/CD pipeline with DroneCI and Portainer for automa
 Configure these secrets in your DroneCI instance:
 
 ```bash
-# Docker Registry (for image storage)
-docker_username          # Docker registry username
-docker_password          # Docker registry password/token
-
 # Portainer Integration
 PORTAINER_URL           # https://port.aqueous.network
 PORTAINER_API_KEY       # Portainer API key for stack management
@@ -165,6 +161,8 @@ PORTAINER_STACK_ID_PRODUCTION  # Production stack ID
 # Optional: Slack Notifications
 slack_webhook           # Slack webhook URL for deployment notifications
 ```
+
+**Note**: Docker registry authentication is not required as images are pushed to the self-hosted registry at `registry.aqueous.network` without authentication.
 
 #### GitHub Repository Settings
 1. **Webhook Configuration**: DroneCI webhook should be configured to trigger on:
@@ -209,9 +207,7 @@ slack_webhook           # Slack webhook URL for deployment notifications
    VITE_APP_NAME=Baseline Production
    VITE_APP_VERSION=1.0.0
    
-   # Docker Images (set by CI/CD)
-   DOCKER_REGISTRY=your-registry.com
-   DOCKER_REPO_NAME=baseline
+   # Docker Images (managed by CI/CD pipeline)
    IMAGE_TAG=latest
    
    # OAuth Configuration (Optional)
