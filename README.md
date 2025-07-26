@@ -138,17 +138,140 @@ make test-coverage
 
 ## Deployment
 
-### Production Build
+### Overview
+The project uses a complete CI/CD pipeline with DroneCI and Portainer for automated deployment to production environments.
+
+**Deployment Flow:**
+1. Push to `develop` → DroneCI tests → Deploy to staging
+2. Push to `main` → DroneCI tests → Build production images → Deploy to production
+3. Portainer pulls latest images and updates stack automatically
+
+### Production Environment Setup
+
+#### Required Secrets in DroneCI
+Configure these secrets in your DroneCI instance:
+
 ```bash
-make build-prod
+# Docker Registry (for image storage)
+docker_username          # Docker registry username
+docker_password          # Docker registry password/token
+
+# Portainer Integration
+PORTAINER_URL           # https://port.aqueous.network
+PORTAINER_API_KEY       # Portainer API key for stack management
+PORTAINER_STACK_ID_STAGING     # Staging stack ID
+PORTAINER_STACK_ID_PRODUCTION  # Production stack ID
+
+# Optional: Slack Notifications
+slack_webhook           # Slack webhook URL for deployment notifications
 ```
 
-### CI/CD Pipeline
-The project includes a complete DroneCI pipeline that:
-- Runs tests and linting
-- Builds production Docker images
-- Deploys to staging/production via Portainer webhooks
-- Sends notifications to Slack
+#### GitHub Repository Settings
+1. **Webhook Configuration**: DroneCI webhook should be configured to trigger on:
+   - Push events to `main` and `develop` branches
+   - Pull request events
+
+2. **Branch Protection**: Recommended settings for `main` branch:
+   - Require status checks to pass (DroneCI build)
+   - Require up-to-date branches
+   - Restrict pushes to admins/maintainers
+
+#### Portainer Stack Configuration
+
+1. **Create Stack in Portainer**:
+   - Navigate to https://port.aqueous.network
+   - Create new stack using Git repository method
+   - Repository URL: Your GitHub repository URL
+   - Compose file path: `docker-compose.prod.yml`
+   - Branch: `main` (for production) or `develop` (for staging)
+
+2. **Environment Variables in Portainer**:
+   Set these environment variables in your Portainer stack:
+
+   ```bash
+   # Database Configuration
+   POSTGRES_DB=baseline_prod
+   POSTGRES_USER=baseline_user
+   POSTGRES_PASSWORD=<secure-password>
+   
+   # Redis Configuration  
+   REDIS_URL=redis://redis:6379
+   
+   # API Configuration
+   JWT_SECRET=<secure-jwt-secret>
+   API_PORT=3001
+   DATABASE_URL=postgresql://baseline_user:<secure-password>@postgres:5432/baseline_prod
+   
+   # UI Configuration
+   UI_PORT=3000
+   VITE_API_URL=https://your-domain.com/api
+   VITE_WS_URL=wss://your-domain.com/api
+   VITE_APP_NAME=Baseline Production
+   VITE_APP_VERSION=1.0.0
+   
+   # Docker Images (set by CI/CD)
+   DOCKER_REGISTRY=your-registry.com
+   DOCKER_REPO_NAME=baseline
+   IMAGE_TAG=latest
+   
+   # OAuth Configuration (Optional)
+   GOOGLE_CLIENT_ID=<google-oauth-client-id>
+   GOOGLE_CLIENT_SECRET=<google-oauth-client-secret>
+   GITHUB_CLIENT_ID=<github-oauth-client-id>
+   GITHUB_CLIENT_SECRET=<github-oauth-client-secret>
+   ```
+
+### Local Production Testing
+
+```bash
+# Validate production compose file
+make validate-stack
+
+# Check if production images exist
+make check-images
+
+# Test production deployment locally
+make deploy-up
+make deploy-logs
+```
+
+### Troubleshooting Deployment
+
+**Common Issues:**
+
+1. **Images not found**: Ensure CI/CD pipeline completed successfully
+   ```bash
+   make check-images
+   ```
+
+2. **Database connection errors**: Verify `DATABASE_URL` format in Portainer environment
+   ```bash
+   # Correct format:
+   postgresql://username:password@postgres:5432/database
+   ```
+
+3. **Environment variable errors**: Check Portainer stack environment configuration
+
+4. **Stack update failures**: Verify Portainer API key and stack IDs in DroneCI secrets
+
+### Manual Deployment Commands
+
+```bash
+# Build production images locally
+make deploy-build
+
+# Start production stack
+make deploy-up
+
+# View production logs
+make deploy-logs
+
+# Restart production services
+make deploy-restart
+
+# Stop production stack
+make deploy-down
+```
 
 ## Database Schema
 

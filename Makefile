@@ -113,10 +113,27 @@ logs-db: ## Show database logs
 
 # Production deployment helpers
 deploy-build: ## Build for production deployment
-	NODE_ENV=production docker-compose -f docker-compose.yml -f docker-compose.prod.yml build
+	NODE_ENV=production docker-compose -f docker-compose.prod.yml build
 
 deploy-up: ## Start production deployment
-	NODE_ENV=production docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+	NODE_ENV=production docker-compose -f docker-compose.prod.yml up -d
+
+deploy-down: ## Stop production deployment
+	docker-compose -f docker-compose.prod.yml down
+
+deploy-logs: ## Show production deployment logs
+	docker-compose -f docker-compose.prod.yml logs -f
+
+deploy-restart: ## Restart production deployment
+	docker-compose -f docker-compose.prod.yml restart
+
+# Stack validation for Portainer
+validate-stack: ## Validate docker-compose.prod.yml for Portainer
+	docker-compose -f docker-compose.prod.yml config
+
+check-images: ## Check if production images exist
+	@echo "Checking for production images..."
+	@docker images | grep baseline || echo "No baseline images found - run CI/CD pipeline first"
 
 # Development utilities
 shell-api: ## Open shell in API container
