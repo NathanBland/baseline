@@ -35,6 +35,8 @@ steps:
 
   - name: build-api
     image: plugins/docker
+    environment:
+      DOCKER_HOST: tcp://docker:2375
     settings:
       repo: registry.aqueous.network/baseline-api
       tags:
@@ -56,6 +58,8 @@ steps:
 
   - name: build-ui
     image: plugins/docker
+    environment:
+      DOCKER_HOST: tcp://docker:2375
     settings:
       repo: registry.aqueous.network/baseline-ui
       tags:
@@ -167,6 +171,18 @@ services:
     image: redis:7-alpine
     ports:
       - 6379
+
+  - name: docker
+    image: docker:20.10.16-dind
+    privileged: true
+    environment:
+      DOCKER_DRIVER: overlay2
+      DOCKER_TLS_CERTDIR: ""
+    command:
+      - dockerd
+      - --host=unix:///var/run/docker.sock
+      - --host=tcp://0.0.0.0:2375
+      - --insecure-registry=registry.aqueous.network
 
 ---
 kind: secret
