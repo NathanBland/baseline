@@ -103,33 +103,39 @@ steps:
         - develop
 
   - name: deploy-production
-    image: curlimages/curl
-    # depends_on:
-    #   - build-api
-    #   - build-ui
-    settings:
-      portainer_url:
+    image: alpine:latest
+    environment:
+      PORTAINER_URL:
         from_secret: PORTAINER_URL
-      portainer_api_key:
+      PORTAINER_API_KEY:
         from_secret: PORTAINER_API_KEY
-      portainer_stack_id:
+      PORTAINER_STACK_ID_PRODUCTION:
         from_secret: PORTAINER_STACK_ID_PRODUCTION
     commands:
+      - apk add --no-cache curl
       - |
-        echo "=== SECRET ACCESS TEST ==="
+        echo "=== ALPINE SECRET ACCESS TEST ==="
         echo "Available environment variables:"
-        env | grep -E '^(PLUGIN_|DRONE)' | sort
-        echo "=== DEBUG VALUES ==="
-        echo "Debug: PLUGIN_PORTAINER_URL=${PLUGIN_PORTAINER_URL}"
-        echo "Debug: PLUGIN_PORTAINER_API_KEY length: ${#PLUGIN_PORTAINER_API_KEY}"
-        echo "Debug: PLUGIN_PORTAINER_STACK_ID=${PLUGIN_PORTAINER_STACK_ID}"
-        curl -X POST "${PLUGIN_PORTAINER_URL}/api/stacks/${PLUGIN_PORTAINER_STACK_ID}/git/redeploy" \
-          -H "X-API-Key: ${PLUGIN_PORTAINER_API_KEY}" \
-          -H "Content-Type: application/json" \
-          -d '{
-            "repositoryReferenceName": "refs/heads/main",
-            "repositoryAuthentication": false
-          }'
+        env | grep -E '^(PORTAINER|DRONE)' | sort
+        echo "=== DIRECT SECRET ACCESS ==="
+        echo "PORTAINER_URL: [$PORTAINER_URL]"
+        echo "PORTAINER_API_KEY: [${PORTAINER_API_KEY:0:8}...] (length: ${#PORTAINER_API_KEY})"
+        echo "PORTAINER_STACK_ID_PRODUCTION: [$PORTAINER_STACK_ID_PRODUCTION]"
+        echo "=== CURL COMMAND ==="
+        if [ -n "$PORTAINER_URL" ] && [ -n "$PORTAINER_API_KEY" ] && [ -n "$PORTAINER_STACK_ID_PRODUCTION" ]; then
+          curl -X POST "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID_PRODUCTION/git/redeploy" \
+            -H "X-API-Key: $PORTAINER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "repositoryReferenceName": "refs/heads/main",
+              "repositoryAuthentication": false
+            }'
+        else
+          echo "ERROR: One or more environment variables are empty"
+          echo "PORTAINER_URL: '$PORTAINER_URL'"
+          echo "PORTAINER_API_KEY: '$PORTAINER_API_KEY'"
+          echo "PORTAINER_STACK_ID_PRODUCTION: '$PORTAINER_STACK_ID_PRODUCTION'"
+        fi
     when:
       event:
         - push
