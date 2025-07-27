@@ -15,7 +15,7 @@ env:
 
 jobs:
   test-api:
-    runs-on: ubuntu-latest
+    runs-on: docker
     container:
       image: oven/bun:1
     services:
@@ -43,7 +43,7 @@ jobs:
         continue-on-error: true
 
   test-ui:
-    runs-on: ubuntu-latest
+    runs-on: docker
     container:
       image: node:20-alpine
     steps:
@@ -67,7 +67,7 @@ jobs:
         continue-on-error: true
 
   build-api:
-    runs-on: ubuntu-latest
+    runs-on: docker
     needs: test-api
     steps:
       - uses: actions/checkout@v4
@@ -94,7 +94,7 @@ jobs:
             NODE_ENV=production
 
   build-ui:
-    runs-on: ubuntu-latest
+    runs-on: docker
     needs: test-ui
     steps:
       - uses: actions/checkout@v4
@@ -121,7 +121,7 @@ jobs:
             NODE_ENV=production
 
   deploy-staging:
-    runs-on: ubuntu-latest
+    runs-on: docker
     needs: [build-api, build-ui]
     if: github.ref == 'refs/heads/develop'
     steps:
@@ -142,7 +142,7 @@ jobs:
           fi
 
   deploy-production:
-    runs-on: ubuntu-latest
+    runs-on: docker
     needs: [build-api, build-ui]
     if: github.ref == 'refs/heads/main'
     steps:
