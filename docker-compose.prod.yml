@@ -71,7 +71,7 @@ services:
     container_name: baseline-ui
     build:
       context: ./ui
-      dockerfile: Dockerfile
+      # dockerfile: Dockerfile
       target: production
     environment:
       NODE_ENV: production
