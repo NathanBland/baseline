@@ -33,47 +33,47 @@ steps:
         - push
         - pull_request
 
-  - name: build-api
-    image: plugins/docker
-    settings:
-      repo: registry.aqueous.network/baseline-api
-      tags:
-        - ${DRONE_COMMIT_SHA:0:8}
-        - ${DRONE_BRANCH}
-        - latest
-      dockerfile: api/Dockerfile
-      context: api
-      target: production
-      build_args:
-        - NODE_ENV=production
-      insecure: true
-    when:
-      event:
-        - push
-      branch:
-        - main
-        - develop
+  # - name: build-api
+  #   image: plugins/docker
+  #   settings:
+  #     repo: registry.aqueous.network/baseline-api
+  #     tags:
+  #       - ${DRONE_COMMIT_SHA:0:8}
+  #       - ${DRONE_BRANCH}
+  #       - latest
+  #     dockerfile: api/Dockerfile
+  #     context: api
+  #     target: production
+  #     build_args:
+  #       - NODE_ENV=production
+  #     insecure: true
+  #   when:
+  #     event:
+  #       - push
+  #     branch:
+  #       - main
+  #       - develop
 
-  - name: build-ui
-    image: plugins/docker
-    settings:
-      repo: registry.aqueous.network/baseline-ui
-      tags:
-        - ${DRONE_COMMIT_SHA:0:8}
-        - ${DRONE_BRANCH}
-        - latest
-      dockerfile: ui/Dockerfile
-      context: ui
-      target: production
-      build_args:
-        - NODE_ENV=production
-      insecure: true
-    when:
-      event:
-        - push
-      branch:
-        - main
-        - develop
+  # - name: build-ui
+  #   image: plugins/docker
+  #   settings:
+  #     repo: registry.aqueous.network/baseline-ui
+  #     tags:
+  #       - ${DRONE_COMMIT_SHA:0:8}
+  #       - ${DRONE_BRANCH}
+  #       - latest
+  #     dockerfile: ui/Dockerfile
+  #     context: ui
+  #     target: production
+  #     build_args:
+  #       - NODE_ENV=production
+  #     insecure: true
+  #   when:
+  #     event:
+  #       - push
+  #     branch:
+  #       - main
+  #       - develop
 
   - name: deploy-staging
     image: curlimages/curl
@@ -97,9 +97,9 @@ steps:
 
   - name: deploy-production
     image: curlimages/curl
-    depends_on:
-      - build-api
-      - build-ui
+    # depends_on:
+    #   - build-api
+    #   - build-ui
     commands:
       - |
         curl -X POST "${PORTAINER_URL}/api/stacks/${PORTAINER_STACK_ID_PRODUCTION}/git/redeploy" \
