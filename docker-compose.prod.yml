@@ -34,12 +34,12 @@ services:
       - baseline-network
 
   api:
-    # image: registry.aqueous.network/baseline-api:${IMAGE_TAG:-latest}
+    image: registry.aqueous.network/baseline-api:${IMAGE_TAG:-latest}
     container_name: baseline-api
-    build:
-      context: ./api
-      dockerfile: Dockerfile
-      target: production
+    # build:
+    #   context: ./api
+    #   dockerfile: Dockerfile
+    #   target: production
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
@@ -69,12 +69,12 @@ services:
       retries: 3
 
   ui:
-    # image: registry.aqueous.network/baseline-ui:${IMAGE_TAG:-latest}
+    image: registry.aqueous.network/baseline-ui:${IMAGE_TAG:-latest}
     container_name: baseline-ui
-    build:
-      context: ./ui
-      dockerfile: Dockerfile
-      target: production
+    # build:
+    #   context: ./ui
+    #   dockerfile: Dockerfile
+    #   target: production
     environment:
       NODE_ENV: production
       API_URL: https://baseline-api.aqueous.network
