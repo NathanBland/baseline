@@ -91,14 +91,27 @@ steps:
       - apk add --no-cache curl
       - |
         echo "🚀 Deploying to staging..."
-        curl -X POST "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID_STAGING/git/redeploy" \
+        RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID_STAGING/git/redeploy" \
           -H "X-API-Key: $PORTAINER_API_KEY" \
           -H "Content-Type: application/json" \
           -d '{
             "repositoryReferenceName": "refs/heads/develop",
             "repositoryAuthentication": false
-          }'
-        echo "✅ Staging deployment triggered successfully"
+          }')
+        
+        HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+        BODY=$(echo "$RESPONSE" | head -n -1)
+        
+        echo "Portainer Response: $BODY"
+        echo "HTTP Status: $HTTP_CODE"
+        
+        if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 202 ]; then
+          echo "✅ Staging deployment triggered successfully"
+        else
+          echo "❌ Staging deployment failed with HTTP $HTTP_CODE"
+          echo "Response body: $BODY"
+          exit 1
+        fi
     when:
       event:
         - push
@@ -107,9 +120,9 @@ steps:
 
   - name: deploy-production
     image: alpine:latest
-    depends_on:
-      - build-api
-      - build-ui
+    # depends_on:
+    #   - build-api
+    #   - build-ui
     environment:
       PORTAINER_URL:
         from_secret: PORTAINER_URL
@@ -121,14 +134,27 @@ steps:
       - apk add --no-cache curl
       - |
         echo "🚀 Deploying to production..."
-        curl -X POST "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID_PRODUCTION/git/redeploy" \
+        RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID_PRODUCTION/git/redeploy" \
           -H "X-API-Key: $PORTAINER_API_KEY" \
           -H "Content-Type: application/json" \
           -d '{
             "repositoryReferenceName": "refs/heads/main",
             "repositoryAuthentication": false
-          }'
-        echo "✅ Production deployment triggered successfully"
+          }')
+        
+        HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+        BODY=$(echo "$RESPONSE" | head -n -1)
+        
+        echo "Portainer Response: $BODY"
+        echo "HTTP Status: $HTTP_CODE"
+        
+        if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 202 ]; then
+          echo "✅ Production deployment triggered successfully"
+        else
+          echo "❌ Production deployment failed with HTTP $HTTP_CODE"
+          echo "Response body: $BODY"
+          exit 1
+        fi
     when:
       event:
         - push
