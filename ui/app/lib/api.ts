@@ -1,11 +1,23 @@
 // API service for communicating with the Baseline backend
-const API_BASE_URL = typeof window !== 'undefined' 
-  ? import.meta.env?.VITE_API_URL || 'http://localhost:3000'
-  : 'http://localhost:3000'
+// Use window.ENV provided by Remix root loader instead of Vite env vars
+const getAPIBaseURL = () => {
+  if (typeof window !== 'undefined' && window.ENV) {
+    return window.ENV.API_URL
+  }
+  // Server-side fallback
+  return 'http://localhost:3001'
+}
 
-const WS_BASE_URL = typeof window !== 'undefined'
-  ? import.meta.env?.VITE_WS_URL || 'ws://localhost:3000'
-  : 'ws://localhost:3000'
+const getWSBaseURL = () => {
+  if (typeof window !== 'undefined' && window.ENV) {
+    return window.ENV.WS_URL
+  }
+  // Server-side fallback
+  return 'ws://localhost:3001'
+}
+
+const API_BASE_URL = getAPIBaseURL()
+const WS_BASE_URL = getWSBaseURL()
 
 export interface User {
   id: string
