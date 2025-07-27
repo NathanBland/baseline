@@ -77,8 +77,8 @@ services:
       target: production
     environment:
       NODE_ENV: production
-      API_URL: ${API_URL}
-      WS_URL: ${WS_URL}
+      API_URL: https://baseline-api.aqueous.network
+      WS_URL: wss://baseline-api.aqueous.network
       APP_NAME: ${APP_NAME:-Baseline}
       APP_VERSION: ${APP_VERSION:-1.0.0}
     ports:
