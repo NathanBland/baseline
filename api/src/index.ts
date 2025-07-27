@@ -13,13 +13,32 @@ import { websocketHandler } from './websocket/index.js'
 // Initialize database connections
 await initializeDatabase()
 
+// Configure CORS allowed origins
+const getAllowedOrigins = (): string[] => {
+  if (process.env.NODE_ENV === 'production') {
+    // In production, use CORS_ALLOWED_ORIGINS or fallback to UI_URL
+    const corsOrigins = process.env.CORS_ALLOWED_ORIGINS
+    if (corsOrigins) {
+      return corsOrigins.split(',').map(origin => origin.trim())
+    }
+    return [process.env.UI_URL || 'http://localhost:3000']
+  }
+  
+  // Development origins
+  return [
+    'http://localhost:5173',
+    'http://localhost:3000', 
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000'
+  ]
+}
+
 const app = new Elysia()
-  // Testing plugins one by one to isolate validation error
   .use(cors({
-    origin: process.env.NODE_ENV === 'production' 
-      ? [process.env.UI_URL || 'http://localhost:3000']
-      : ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
-    credentials: true
+    origin: getAllowedOrigins(),
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
   }))
   .use(swagger({
     documentation: {
