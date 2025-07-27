@@ -14,6 +14,7 @@ env:
   PORTAINER_STACK_ID_PRODUCTION: 114
 
 jobs:
+  # Test jobs run in parallel
   test-api:
     runs-on: docker
     container:
@@ -66,9 +67,9 @@ jobs:
           npm run test:coverage
         continue-on-error: true
 
+  # Build jobs run in parallel with tests (no dependency)
   build-api:
     runs-on: docker
-    needs: test-api
     steps:
       - uses: actions/checkout@v4
       - name: Set up Docker Buildx
@@ -95,7 +96,6 @@ jobs:
 
   build-ui:
     runs-on: docker
-    needs: test-ui
     steps:
       - uses: actions/checkout@v4
       - name: Set up Docker Buildx
