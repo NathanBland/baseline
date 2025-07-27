@@ -80,6 +80,13 @@ steps:
     # depends_on:
     #   - build-api
     #   - build-ui
+    environment:
+      PORTAINER_URL:
+        from_secret: PORTAINER_URL
+      PORTAINER_API_KEY:
+        from_secret: PORTAINER_API_KEY
+      PORTAINER_STACK_ID_STAGING:
+        from_secret: PORTAINER_STACK_ID_STAGING
     commands:
       - |
         curl -X POST "${PORTAINER_URL}/api/stacks/${PORTAINER_STACK_ID_STAGING}/git/redeploy" \
@@ -100,6 +107,13 @@ steps:
     # depends_on:
     #   - build-api
     #   - build-ui
+    environment:
+      PORTAINER_URL:
+        from_secret: PORTAINER_URL
+      PORTAINER_API_KEY:
+        from_secret: PORTAINER_API_KEY
+      PORTAINER_STACK_ID_PRODUCTION:
+        from_secret: PORTAINER_STACK_ID_PRODUCTION
     commands:
       - |
         curl -X POST "${PORTAINER_URL}/api/stacks/${PORTAINER_STACK_ID_PRODUCTION}/git/redeploy" \
