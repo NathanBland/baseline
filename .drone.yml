@@ -116,6 +116,10 @@ steps:
         from_secret: PORTAINER_STACK_ID_PRODUCTION
     commands:
       - |
+        echo "=== SECRET ACCESS TEST ==="
+        echo "Available environment variables:"
+        env | grep -E '^(PORTAINER|DRONE)' | sort
+        echo "=== DEBUG VALUES ==="
         echo "Debug: PORTAINER_URL=${PORTAINER_URL}"
         echo "Debug: PORTAINER_API_KEY length: ${#PORTAINER_API_KEY}"
         echo "Debug: PORTAINER_STACK_ID_PRODUCTION=${PORTAINER_STACK_ID_PRODUCTION}"
