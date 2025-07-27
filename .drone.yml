@@ -120,9 +120,9 @@ steps:
 
   - name: deploy-production
     image: alpine:latest
-    # depends_on:
-    #   - build-api
-    #   - build-ui
+    depends_on:
+      - build-api
+      - build-ui
     environment:
       PORTAINER_URL:
         from_secret: PORTAINER_URL
