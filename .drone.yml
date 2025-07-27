@@ -91,7 +91,7 @@ steps:
       - apk add --no-cache curl
       - |
         echo "🚀 Deploying to staging..."
-        RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID_STAGING/git/redeploy" \
+        RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID_STAGING/git/redeploy?endpointId=1" \
           -H "X-API-Key: $PORTAINER_API_KEY" \
           -H "Content-Type: application/json" \
           -d '{
@@ -134,7 +134,7 @@ steps:
       - apk add --no-cache curl
       - |
         echo "🚀 Deploying to production..."
-        RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID_PRODUCTION/git/redeploy" \
+        RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID_PRODUCTION/git/redeploy?endpointId=1" \
           -H "X-API-Key: $PORTAINER_API_KEY" \
           -H "Content-Type: application/json" \
           -d '{
