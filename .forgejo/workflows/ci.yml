@@ -74,6 +74,8 @@ jobs:
   # Build jobs run in parallel with tests (no dependency)
   build-api:
     runs-on: docker
+    container:
+      image: oven/bun:1-alpine
     steps:
       - uses: actions/checkout@v4
         with:
@@ -98,6 +100,8 @@ jobs:
 
   build-ui:
     runs-on: docker
+    container:
+      image: node:20-alpine
     steps:
       - uses: actions/checkout@v4
         with:
