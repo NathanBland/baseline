@@ -77,9 +77,9 @@ steps:
 
   - name: deploy-staging
     image: curlimages/curl
-    depends_on:
-      - build-api
-      - build-ui
+    # depends_on:
+    #   - build-api
+    #   - build-ui
     commands:
       - |
         curl -X POST "${PORTAINER_URL}/api/stacks/${PORTAINER_STACK_ID_STAGING}/git/redeploy" \
