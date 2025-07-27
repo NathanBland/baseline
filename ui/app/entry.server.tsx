@@ -14,6 +14,20 @@ import { renderToPipeableStream } from "react-dom/server";
 
 const ABORT_DELAY = 5_000;
 
+// Log environment variables on server startup (only once)
+let hasLoggedEnv = false;
+if (!hasLoggedEnv && process.env.NODE_ENV === 'production') {
+  console.log('🚀 [REMIX-SERVER] Starting up with environment variables:', {
+    API_URL: process.env.API_URL || 'NOT_SET',
+    WS_URL: process.env.WS_URL || 'NOT_SET',
+    APP_NAME: process.env.APP_NAME || 'NOT_SET',
+    APP_VERSION: process.env.APP_VERSION || 'NOT_SET',
+    NODE_ENV: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
+  hasLoggedEnv = true;
+}
+
 export default function handleRequest(
   request: Request,
   responseStatusCode: number,

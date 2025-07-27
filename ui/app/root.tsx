@@ -13,6 +13,18 @@ import "./tailwind.css";
 
 // Environment variables for the client
 export async function loader({ request }: LoaderFunctionArgs) {
+  // Log environment variables for debugging (only in production to avoid spam)
+  if (process.env.NODE_ENV === 'production') {
+    console.log('🔍 [REMIX-ENV] Environment variables loaded:', {
+      API_URL: process.env.API_URL || 'DEFAULT: http://localhost:3001',
+      WS_URL: process.env.WS_URL || 'DEFAULT: ws://localhost:3001',
+      APP_NAME: process.env.APP_NAME || 'DEFAULT: Baseline',
+      APP_VERSION: process.env.APP_VERSION || 'DEFAULT: 1.0.0',
+      NODE_ENV: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    });
+  }
+  
   return json({
     ENV: {
       API_URL: process.env.API_URL || 'http://localhost:3001',
