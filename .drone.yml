@@ -76,10 +76,10 @@ steps:
         - develop
 
   - name: deploy-staging
-    image: curlimages/curl
-    # depends_on:
-    #   - build-api
-    #   - build-ui
+    image: alpine:latest
+    depends_on:
+      - build-api
+      - build-ui
     environment:
       PORTAINER_URL:
         from_secret: PORTAINER_URL
@@ -88,14 +88,17 @@ steps:
       PORTAINER_STACK_ID_STAGING:
         from_secret: PORTAINER_STACK_ID_STAGING
     commands:
+      - apk add --no-cache curl
       - |
-        curl -X POST "${PORTAINER_URL}/api/stacks/${PORTAINER_STACK_ID_STAGING}/git/redeploy" \
-          -H "X-API-Key: ${PORTAINER_API_KEY}" \
+        echo "🚀 Deploying to staging..."
+        curl -X POST "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID_STAGING/git/redeploy" \
+          -H "X-API-Key: $PORTAINER_API_KEY" \
           -H "Content-Type: application/json" \
           -d '{
             "repositoryReferenceName": "refs/heads/develop",
             "repositoryAuthentication": false
           }'
+        echo "✅ Staging deployment triggered successfully"
     when:
       event:
         - push
@@ -104,6 +107,9 @@ steps:
 
   - name: deploy-production
     image: alpine:latest
+    depends_on:
+      - build-api
+      - build-ui
     environment:
       PORTAINER_URL:
         from_secret: PORTAINER_URL
@@ -114,77 +120,64 @@ steps:
     commands:
       - apk add --no-cache curl
       - |
-        echo "=== ALPINE SECRET ACCESS TEST ==="
-        echo "Available environment variables:"
-        env | grep -E '^(PORTAINER|DRONE)' | sort
-        echo "=== DIRECT SECRET ACCESS ==="
-        echo "PORTAINER_URL: [$PORTAINER_URL]"
-        echo "PORTAINER_API_KEY: [${PORTAINER_API_KEY:0:8}...] (length: ${#PORTAINER_API_KEY})"
-        echo "PORTAINER_STACK_ID_PRODUCTION: [$PORTAINER_STACK_ID_PRODUCTION]"
-        echo "=== CURL COMMAND ==="
-        if [ -n "$PORTAINER_URL" ] && [ -n "$PORTAINER_API_KEY" ] && [ -n "$PORTAINER_STACK_ID_PRODUCTION" ]; then
-          curl -X POST "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID_PRODUCTION/git/redeploy" \
-            -H "X-API-Key: $PORTAINER_API_KEY" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "repositoryReferenceName": "refs/heads/main",
-              "repositoryAuthentication": false
-            }'
-        else
-          echo "ERROR: One or more environment variables are empty"
-          echo "PORTAINER_URL: '$PORTAINER_URL'"
-          echo "PORTAINER_API_KEY: '$PORTAINER_API_KEY'"
-          echo "PORTAINER_STACK_ID_PRODUCTION: '$PORTAINER_STACK_ID_PRODUCTION'"
-        fi
+        echo "🚀 Deploying to production..."
+        curl -X POST "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID_PRODUCTION/git/redeploy" \
+          -H "X-API-Key: $PORTAINER_API_KEY" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "repositoryReferenceName": "refs/heads/main",
+            "repositoryAuthentication": false
+          }'
+        echo "✅ Production deployment triggered successfully"
     when:
       event:
         - push
       branch:
         - main
 
-  - name: notify-success
-    image: plugins/slack
-    depends_on:
-      - deploy-staging
-      - deploy-production
-    settings:
-      webhook:
-        from_secret: slack_webhook
-      channel: deployments
-      username: drone
-      template: |
-        ✅ *{{repo.name}}* deployment successful
-        📦 Branch: `{{build.branch}}`
-        🏷️ Tag: `{{build.tag}}`
-        👤 Author: {{build.author}}
-        🔗 <{{build.link}}|View Build>
-    when:
-      status:
-        - success
-      event:
-        - push
-      branch:
-        - main
-        - develop
+  # - name: notify-success
+  #   image: plugins/slack
+  #   depends_on:
+  #     - deploy-staging
+  #     - deploy-production
+  #   settings:
+  #     webhook:
+  #       from_secret: slack_webhook
+  #     channel: deployments
+  #     username: drone
+  #     template: |
+  #       ✅ *{{repo.name}}* deployment successful
+  #       📦 Branch: `{{build.branch}}`
+  #       🏷️ Tag: `{{build.tag}}`
+  #       👤 Author: {{build.author}}
+  #       🔗 <{{build.link}}|View Build>
+  #   when:
+  #     status:
+  #       - success
+  #     event:
+  #       - push
+  #     branch:
+  #       - main
+  #       - develop
 
-  - name: notify-failure
-    image: plugins/slack
-    depends_on:
-      - deploy-staging
-      - deploy-production
-    settings:
-      webhook:
-        from_secret: slack_webhook
-      channel: deployments
-      username: drone
-      template: |
-        ❌ *{{repo.name}}* deployment failed
-        📦 Branch: `{{build.branch}}`
-        👤 Author: {{build.author}}
-        🔗 <{{build.link}}|View Build>
-    when:
-      status:
-        - failure
+  # - name: notify-failure
+  #   image: plugins/slack
+  #   depends_on:
+  #     - deploy-staging
+  #     - deploy-production
+  #   settings:
+  #     webhook:
+  #       from_secret: slack_webhook
+  #     channel: deployments
+  #     username: drone
+  #     template: |
+  #       ❌ *{{repo.name}}* deployment failed
+  #       📦 Branch: `{{build.branch}}`
+  #       👤 Author: {{build.author}}
+  #       🔗 <{{build.link}}|View Build>
+  #   when:
+  #     status:
+  #       - failure
 
 services:
   - name: postgres
