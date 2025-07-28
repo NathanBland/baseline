@@ -17,7 +17,12 @@ export const authModule = new Elysia({ prefix: '/auth' })
       session.sameSite = process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
       session.maxAge = 60 * 60 * 24 * 30 // 30 days
 
-      return response
+      // For now, return sessionId as token for WebSocket auth
+      // TODO: Implement proper JWT token generation
+      return {
+        ...response,
+        token: response.sessionId
+      }
     },
     {
       body: AuthModel.registerBody,

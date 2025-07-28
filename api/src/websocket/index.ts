@@ -1,6 +1,7 @@
 import { lucia } from '../auth/index.js'
 import { prisma } from '../db/index.js'
 import { AuthService } from '../modules/auth/service.js'
+import { redisConnectionManager } from './redis-connection-manager.js'
 
 interface WebSocketConnection {
   ws: any
@@ -10,6 +11,9 @@ interface WebSocketConnection {
 
 // Store active connections
 const connections = new Map<string, WebSocketConnection>()
+
+// Store user ID to WebSocket ID mapping for targeted broadcasting
+const userToWebSocket = new Map<string, string>()
 
 export const websocketHandler = {
   message: async (ws: any, message: any) => {
@@ -59,6 +63,10 @@ export const websocketHandler = {
         case 'message':
         case 'message_created':
           await handleMessage(connection, messageData?.conversationId, messageData)
+          break
+          
+        case 'conversation_created':
+          await handleConversationCreated(connection, messageData)
           break
           
         case 'ping':
@@ -127,7 +135,17 @@ export const websocketHandler = {
         conversationIds: new Set()
       }
       
+      // Store in local map AND Redis for scoped delivery
       connections.set(ws.id, connection)
+      
+      // Handle Redis registration with error handling
+      try {
+        await redisConnectionManager.addConnection(ws.id, sessionValidation.user.id)
+        console.log(`✅ WebSocket connection registered in Redis: ${ws.id}`)
+      } catch (redisError) {
+        console.warn('⚠️ Redis connection registration failed, continuing without Redis:', redisError)
+        // Continue without Redis - WebSocket will still work with local connections only
+      }
       
       const connectedMessage = {
         type: 'connected',
@@ -149,7 +167,13 @@ export const websocketHandler = {
 
   close: (ws: any) => {
     console.log('WebSocket connection closed')
+    // Remove from local map immediately
     connections.delete(ws.id)
+    
+    // Handle Redis cleanup asynchronously without blocking the close handler
+    redisConnectionManager.removeConnection(ws.id).catch(error => {
+      console.error('Error cleaning up Redis connection:', error)
+    })
   },
 
   error: (ws: any, error: Error) => {
@@ -158,12 +182,13 @@ export const websocketHandler = {
 }
 
 // Helper functions for handling different message types
-async function handleJoinConversation(connection: WebSocketConnection, conversationId: string) {
+async function handleJoinConversation(connection: WebSocketConnection, conversationId: string, retryCount = 0) {
   try {
     console.log('🔍 Join conversation attempt:', {
       userId: connection.userId,
       conversationId: conversationId,
-      conversationIdType: typeof conversationId
+      conversationIdType: typeof conversationId,
+      retryCount
     })
     
     if (!conversationId) {
@@ -186,6 +211,15 @@ async function handleJoinConversation(connection: WebSocketConnection, conversat
     console.log('🔍 Participant found:', participant ? 'YES' : 'NO')
     
     if (!participant) {
+      // Handle race condition: participant record might not be committed yet
+      if (retryCount < 3) {
+        console.log(`🔄 Participant not found, retrying in 100ms (attempt ${retryCount + 1}/3)...`)
+        setTimeout(() => {
+          handleJoinConversation(connection, conversationId, retryCount + 1)
+        }, 100)
+        return
+      }
+      
       console.log('❌ Access denied to conversation:', conversationId)
       connection.ws.send(JSON.stringify({ error: 'Access denied to conversation' }))
       return
@@ -237,12 +271,20 @@ async function handleTypingStart(connection: WebSocketConnection, conversationId
     return
   }
   
+  // Get user info for typing indicator
+  const user = await prisma.user.findUnique({
+    where: { id: connection.userId },
+    select: { username: true }
+  })
+  
   // Broadcast typing start to conversation participants
   broadcastToConversation(conversationId, {
     type: 'typing_start',
     data: {
       userId: connection.userId,
-      conversationId
+      userName: user?.username || 'Unknown User',
+      conversationId,
+      isTyping: true
     }
   }, connection.userId)
 }
@@ -252,12 +294,20 @@ async function handleTypingStop(connection: WebSocketConnection, conversationId:
     return
   }
   
+  // Get user info for typing indicator
+  const user = await prisma.user.findUnique({
+    where: { id: connection.userId },
+    select: { username: true }
+  })
+  
   // Broadcast typing stop to conversation participants
   broadcastToConversation(conversationId, {
     type: 'typing_stop',
     data: {
       userId: connection.userId,
-      conversationId
+      userName: user?.username || 'Unknown User',
+      conversationId,
+      isTyping: false
     }
   }, connection.userId)
 }
@@ -308,10 +358,180 @@ async function handleMessage(connection: WebSocketConnection, conversationId: st
   }
 }
 
-function broadcastToConversation(conversationId: string, message: any, excludeUserId?: string) {
-  for (const [wsId, connection] of connections) {
-    if (connection.conversationIds.has(conversationId) && connection.userId !== excludeUserId) {
-      connection.ws.send(JSON.stringify(message))
+async function handleConversationCreated(connection: WebSocketConnection, messageData: any) {
+  try {
+    console.log('🔍 Conversation created notification:', {
+      userId: connection.userId,
+      conversationId: messageData?.conversationId,
+      title: messageData?.title
+    })
+    
+    if (!messageData?.conversationId) {
+      console.log('❌ No conversationId provided in conversation_created event')
+      connection.ws.send(JSON.stringify({ error: 'No conversation ID provided' }))
+      return
     }
+    
+    // Get the full conversation with all participant data needed for title display
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: messageData.conversationId },
+      include: {
+        participants: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                avatar: true,
+                firstName: true,
+                lastName: true
+              }
+            }
+          }
+        },
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          include: {
+            author: {
+              select: {
+                id: true,
+                username: true,
+                avatar: true
+              }
+            }
+          }
+        }
+      }
+    })
+    
+    if (!conversation) {
+      connection.ws.send(JSON.stringify({ error: 'Conversation not found' }))
+      return
+    }
+    
+    // Verify user is a participant
+    const userParticipant = conversation.participants.find(p => p.userId === connection.userId)
+    if (!userParticipant) {
+      connection.ws.send(JSON.stringify({ error: 'Not a participant in this conversation' }))
+      return
+    }
+    
+    // Auto-join the user to their newly created conversation
+    connection.conversationIds.add(messageData.conversationId)
+    
+    // Send confirmation to the creator first
+    connection.ws.send(JSON.stringify({
+      type: 'conversation_created_confirmed',
+      data: { 
+        conversationId: messageData.conversationId, 
+        conversation: {
+          ...conversation,
+          lastMessage: conversation.messages[0] || null,
+          updatedAt: conversation.updatedAt.toISOString()
+        }
+      }
+    }))
+    
+    // Now notify all OTHER participants (excluding the creator) with complete data
+    console.log(`📡 Broadcasting conversation_created to other participants of conversation ${messageData.conversationId}`)
+    await notifyAllParticipants(messageData.conversationId, {
+      type: 'conversation_created',
+      data: { 
+        conversationId: messageData.conversationId, 
+        conversation: {
+          ...conversation,
+          lastMessage: conversation.messages[0] || null,
+          updatedAt: conversation.updatedAt.toISOString()
+        },
+        createdBy: connection.userId 
+      }
+    }, connection.userId)
+    
+    console.log(`✅ Conversation creation notification complete for conversation ${messageData.conversationId}`)
+  } catch (error) {
+    console.error('Error in handleConversationCreated:', error)
+    connection.ws.send(JSON.stringify({ error: 'Failed to handle conversation creation' }))
+  }
+}
+
+async function notifyAllParticipants(conversationId: string, message: any, excludeUserId?: string) {
+  try {
+    // Get all participants from database
+    const participants = await prisma.conversationParticipant.findMany({
+      where: {
+        conversationId: conversationId
+      },
+      select: {
+        userId: true
+      }
+    })
+    
+    const participantUserIds = participants.map(p => p.userId).filter(id => id !== excludeUserId)
+    console.log(`📡 Notifying conversation ${conversationId} participants:`, participantUserIds)
+    
+    // Try Redis-based scoped delivery first
+    let redisSuccess = false
+    try {
+      for (const userId of participantUserIds) {
+        const userSocketIds = await redisConnectionManager.getUserConnections(userId)
+        console.log(`🔍 User ${userId} has ${userSocketIds.length} active socket(s):`, userSocketIds)
+        
+        for (const socketId of userSocketIds) {
+          const connection = connections.get(socketId)
+          if (connection) {
+            console.log(`📤 Redis-scoped notification to user ${userId} via socket ${socketId}`)
+            connection.ws.send(JSON.stringify(message))
+          } else {
+            console.warn(`⚠️ Socket ${socketId} for user ${userId} not found in local connections`)
+          }
+        }
+      }
+      redisSuccess = true
+      console.log(`✅ Redis-scoped notification complete for conversation ${conversationId}`)
+    } catch (redisError) {
+      console.warn('⚠️ Redis notification failed, falling back to local connections:', redisError)
+    }
+    
+    // Fallback to local connections if Redis failed
+    if (!redisSuccess) {
+      console.log(`🔄 Falling back to local connection broadcast for conversation ${conversationId}`)
+      for (const [wsId, connection] of connections) {
+        if (participantUserIds.includes(connection.userId)) {
+          console.log(`📤 Local fallback notification to user ${connection.userId} via socket ${wsId}`)
+          connection.ws.send(JSON.stringify(message))
+        }
+      }
+      console.log(`✅ Local fallback notification complete for conversation ${conversationId}`)
+    }
+  } catch (error) {
+    console.error('Error in participant notification (all methods failed):', error)
+  }
+}
+
+async function broadcastToConversation(conversationId: string, message: any, excludeUserId?: string) {
+  try {
+    // Get all participants from database
+    const participants = await prisma.conversationParticipant.findMany({
+      where: {
+        conversationId: conversationId
+      },
+      select: {
+        userId: true
+      }
+    })
+    
+    const participantUserIds = participants.map(p => p.userId)
+    console.log(`📡 Broadcasting to conversation ${conversationId} participants:`, participantUserIds)
+    
+    // Send message to all connected participants (except excluded user)
+    for (const [wsId, connection] of connections) {
+      if (participantUserIds.includes(connection.userId) && connection.userId !== excludeUserId) {
+        console.log(`📤 Sending to user ${connection.userId} via WebSocket ${wsId}`)
+        connection.ws.send(JSON.stringify(message))
+      }
+    }
+  } catch (error) {
+    console.error('Error broadcasting to conversation:', error)
   }
 }

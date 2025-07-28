@@ -107,6 +107,7 @@ const app = new Elysia()
   .use(authModule)
   .use(conversationModule)
   .use(messageModule)
+  .use((await import('./modules/users')).userModule)
   .get('/', () => new Response('Hello Elysia', {
     headers: { 'content-type': 'text/plain' }
   }))

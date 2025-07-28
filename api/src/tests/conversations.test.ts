@@ -218,6 +218,95 @@ describe('Conversation Routes', () => {
       expect(data.participant.userId).toBe(user2.id)
       expect(data.participant.role).toBe('MEMBER')
     })
+
+    it('should prevent non-admin users from adding participants', async () => {
+      // Given: Three users and a conversation
+      const user1 = await createTestUser({ id: 'user1', username: 'user1', email: 'user1@test.com' })
+      const user2 = await createTestUser({ id: 'user2', username: 'user2', email: 'user2@test.com' })
+      const user3 = await createTestUser({ id: 'user3', username: 'user3', email: 'user3@test.com' })
+      const conversation = await createTestConversation(user1.id)
+
+      // Add user2 as regular member
+      await app.handle(
+        createAuthenticatedRequest(`http://localhost/conversations/${conversation.id}/participants?userId=${user1.id}`, {
+          method: 'POST',
+          headers: createAuthHeaders(),
+          body: JSON.stringify({ userId: user2.id, role: 'MEMBER' })
+        })
+      )
+
+      // When: User2 (non-admin) tries to add user3
+      const response = await app.handle(
+        createAuthenticatedRequest(`http://localhost/conversations/${conversation.id}/participants?userId=${user2.id}`, {
+          method: 'POST',
+          headers: createAuthHeaders(),
+          body: JSON.stringify({ userId: user3.id, role: 'MEMBER' })
+        })
+      )
+
+      expect(response.status).toBe(403)
+    })
+
+    it('should prevent adding duplicate participants', async () => {
+      // Given: Two users and a conversation
+      const user1 = await createTestUser({ id: 'user1', username: 'user1', email: 'user1@test.com' })
+      const user2 = await createTestUser({ id: 'user2', username: 'user2', email: 'user2@test.com' })
+      const conversation = await createTestConversation(user1.id)
+
+      // Add user2 once
+      await app.handle(
+        createAuthenticatedRequest(`http://localhost/conversations/${conversation.id}/participants?userId=${user1.id}`, {
+          method: 'POST',
+          headers: createAuthHeaders(),
+          body: JSON.stringify({ userId: user2.id, role: 'MEMBER' })
+        })
+      )
+
+      // When: Try to add user2 again
+      const response = await app.handle(
+        createAuthenticatedRequest(`http://localhost/conversations/${conversation.id}/participants?userId=${user1.id}`, {
+          method: 'POST',
+          headers: createAuthHeaders(),
+          body: JSON.stringify({ userId: user2.id, role: 'MEMBER' })
+        })
+      )
+
+      expect(response.status).toBe(400)
+    })
+
+    it('should allow admin to add participants with different roles', async () => {
+      // Given: Three users and a conversation
+      const user1 = await createTestUser({ id: 'user1', username: 'user1', email: 'user1@test.com' })
+      const user2 = await createTestUser({ id: 'user2', username: 'user2', email: 'user2@test.com' })
+      const user3 = await createTestUser({ id: 'user3', username: 'user3', email: 'user3@test.com' })
+      const conversation = await createTestConversation(user1.id)
+
+      // When: Add user2 as moderator and user3 as member
+      const response1 = await app.handle(
+        createAuthenticatedRequest(`http://localhost/conversations/${conversation.id}/participants?userId=${user1.id}`, {
+          method: 'POST',
+          headers: createAuthHeaders(),
+          body: JSON.stringify({ userId: user2.id, role: 'MODERATOR' })
+        })
+      )
+
+      const response2 = await app.handle(
+        createAuthenticatedRequest(`http://localhost/conversations/${conversation.id}/participants?userId=${user1.id}`, {
+          method: 'POST',
+          headers: createAuthHeaders(),
+          body: JSON.stringify({ userId: user3.id, role: 'MEMBER' })
+        })
+      )
+
+      expect(response1.status).toBe(200)
+      expect(response2.status).toBe(200)
+      
+      const data1 = await response1.json()
+      const data2 = await response2.json()
+      
+      expect(data1.participant.role).toBe('MODERATOR')
+      expect(data2.participant.role).toBe('MEMBER')
+    })
   })
 
   describe('DELETE /conversations/:id/participants/:userId', () => {

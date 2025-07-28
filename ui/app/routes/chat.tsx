@@ -32,6 +32,31 @@ interface ChatMessage {
   canRetry?: boolean // Whether retry is available
 }
 
+// Helper function to safely format timestamps
+const formatTimestamp = (dateString: string | Date | undefined): string => {
+  if (!dateString) return 'now'
+  
+  try {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return 'now'
+    
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / (1000 * 60))
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    
+    if (diffMins < 1) return 'now'
+    if (diffMins < 60) return `${diffMins}m`
+    if (diffHours < 24) return `${diffHours}h`
+    if (diffDays < 7) return `${diffDays}d`
+    
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' })
+  } catch {
+    return 'now'
+  }
+}
+
 // Adapter functions
 const adaptConversation = (conv: ApiConversation): ChatConversation => {
   // Safely extract participants with nested user structure
@@ -45,7 +70,7 @@ const adaptConversation = (conv: ApiConversation): ChatConversation => {
     id: conv.id,
     title: conv.title,
     lastMessage: conv.lastMessage?.content || conv.messages?.[conv.messages.length - 1]?.content || 'No messages yet',
-    timestamp: new Date(conv.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    timestamp: formatTimestamp(conv.updatedAt),
     unreadCount: 0, // TODO: Implement unread count from API
     participants
   }
@@ -146,12 +171,38 @@ export default function ChatPage() {
             console.log('Adding real message:', adaptedMessage.id)
             return [...withoutOptimistic, adaptedMessage]
           })
+          
+          // Update conversation list to show latest message
+          setConversations(prev => prev.map(conv => {
+            if (conv.id === message.conversationId) {
+              return {
+                ...conv,
+                lastMessage: message.content,
+                timestamp: formatTimestamp(message.createdAt)
+              }
+            }
+            return conv
+          }))
         })
         
         webSocketService.onConversation((conversation: ApiConversation) => {
-          setConversations(prev => 
-            prev.map(c => c.id === conversation.id ? adaptConversation(conversation) : c)
-          )
+          console.log('🏗️ Received conversation event:', conversation.id)
+          setConversations(prev => {
+            const existingIndex = prev.findIndex(c => c.id === conversation.id)
+            const adaptedConversation = adaptConversation(conversation)
+            
+            if (existingIndex >= 0) {
+              // Update existing conversation
+              console.log('📝 Updating existing conversation:', conversation.id)
+              const updated = [...prev]
+              updated[existingIndex] = adaptedConversation
+              return updated
+            } else {
+              // Add new conversation to the top of the list
+              console.log('➕ Adding new conversation:', conversation.id)
+              return [adaptedConversation, ...prev]
+            }
+          })
         })
         
         // Set up typing indicator WebSocket listener

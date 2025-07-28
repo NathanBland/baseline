@@ -89,8 +89,8 @@ export function UserSettings({ user, onLogout, onUpdateProfile }: UserSettingsPr
                 {user.name.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <Button variant="outline" size="sm">
-              Change Avatar
+            <Button variant="outline" size="sm" disabled>
+              Change Avatar (Coming Soon)
             </Button>
           </div>
           
@@ -125,45 +125,30 @@ export function UserSettings({ user, onLogout, onUpdateProfile }: UserSettingsPr
         </CardContent>
       </Card>
 
-      {/* Notification Settings */}
+      {/* Notification Settings - Temporarily disabled due to hydration issues */}
+      {/* TODO: Re-enable notification settings after fixing hydration */}
+
+      {/* Privacy & Security */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            Notifications
+            <Shield className="h-5 w-5" />
+            Privacy & Security
           </CardTitle>
           <CardDescription>
-            Configure how you receive notifications
+            Manage your privacy and security settings
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Push Notifications</Label>
-              <p className="text-sm text-muted-foreground">
-                Receive notifications for new messages
-              </p>
-            </div>
-            <Switch
-              checked={notifications}
-              onCheckedChange={setNotifications}
-            />
-          </div>
-          
-          <Separator />
-          
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Sound Effects</Label>
-              <p className="text-sm text-muted-foreground">
-                Play sounds for notifications and actions
-              </p>
-            </div>
-            <Switch
-              checked={soundEnabled}
-              onCheckedChange={setSoundEnabled}
-            />
-          </div>
+          <Button variant="outline" className="w-full justify-start" disabled>
+            Change Password (Coming Soon)
+          </Button>
+          <Button variant="outline" className="w-full justify-start" disabled>
+            Download Data (Coming Soon)
+          </Button>
+          <Button variant="outline" className="w-full justify-start" disabled>
+            Privacy Settings (Coming Soon)
+          </Button>
         </CardContent>
       </Card>
 
@@ -211,30 +196,6 @@ export function UserSettings({ user, onLogout, onUpdateProfile }: UserSettingsPr
               </Button>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Privacy & Security */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Privacy & Security
-          </CardTitle>
-          <CardDescription>
-            Manage your privacy and security settings
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Button variant="outline" className="w-full justify-start">
-            Change Password
-          </Button>
-          <Button variant="outline" className="w-full justify-start">
-            Download Data
-          </Button>
-          <Button variant="outline" className="w-full justify-start">
-            Privacy Settings
-          </Button>
         </CardContent>
       </Card>
 

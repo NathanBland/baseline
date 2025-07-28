@@ -16,7 +16,8 @@ export namespace AuthModel {
       email: t.String(),
       createdAt: t.Date()
     }),
-    sessionId: t.String()
+    sessionId: t.String(),
+    token: t.String()
   })
   export type RegisterResponse = typeof registerResponse.static
 

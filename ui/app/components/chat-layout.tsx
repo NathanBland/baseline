@@ -18,6 +18,7 @@ import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { ScrollArea } from "~/components/ui/scroll-area"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
+import { getConversationDisplayTitle } from "~/lib/conversation-utils"
 import { ConnectionIndicator } from "~/components/connection-indicator"
 import { Badge } from "~/components/ui/badge"
 import { CreateConversationDialog } from "~/components/create-conversation-dialog"
@@ -150,6 +151,11 @@ export function ChatLayout({
 
   const handleSendMessage = () => {
     if (messageInput.trim()) {
+      // Send typing stop event before sending the message
+      if (activeConversationId) {
+        onTypingStop(activeConversationId)
+      }
+      
       onSendMessage(messageInput.trim())
       setMessageInput("")
     }
@@ -211,7 +217,13 @@ export function ChatLayout({
               >
                 <Plus className="h-4 w-4" />
               </Button>
-              <Button size="sm" variant="ghost">
+              <Button 
+                size="sm" 
+                variant="ghost"
+                onClick={() => window.location.href = '/settings'}
+                title="Settings"
+                className="flex items-center gap-1"
+              >
                 <Settings className="h-4 w-4" />
               </Button>
             </div>
@@ -255,10 +267,10 @@ export function ChatLayout({
                           {conversation.participants[0]?.name.slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1 text-left overflow-hidden">
-                        <div className="flex items-center justify-between">
-                          <p className="font-medium truncate">{conversation.title}</p>
-                          <span className="text-xs text-muted-foreground">
+                      <div className="flex-1 text-left overflow-hidden min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-medium truncate flex-1 min-w-0">{getConversationDisplayTitle(conversation, currentUser)}</p>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
                             {conversation.timestamp}
                           </span>
                         </div>
@@ -300,7 +312,7 @@ export function ChatLayout({
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h2 className="font-semibold">{activeConversation.title}</h2>
+                    <h2 className="font-semibold">{getConversationDisplayTitle(activeConversation, currentUser)}</h2>
                     <p className="text-sm text-muted-foreground">
                       {activeConversation.participants.length} participants
                     </p>

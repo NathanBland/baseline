@@ -6,8 +6,8 @@
 export interface PendingMessage {
   id: string
   type: 'message_created' | 'message_updated' | 'message_deleted' | 
-        'conversation_created' | 'conversation_updated' | 'user_joined' | 
-        'user_left' | 'typing_start' | 'typing_stop' | 'ping' | 'pong' |
+        'conversation_created' | 'conversation_created_confirmed' | 'conversation_updated' | 
+        'user_joined' | 'user_left' | 'typing_start' | 'typing_stop' | 'ping' | 'pong' |
         'join_conversation' | 'leave_conversation' | 'message' | 'connected' |
         'joined_conversation'
   data: any

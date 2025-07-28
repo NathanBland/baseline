@@ -20,15 +20,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
     'process.env.APP_NAME': process.env.APP_NAME,
     'process.env.APP_VERSION': process.env.APP_VERSION,
     'process.env.NODE_ENV': process.env.NODE_ENV,
-    'final API_URL': process.env.API_URL || 'http://localhost:3001',
-    'final WS_URL': process.env.WS_URL || 'ws://localhost:3001',
+    'final API_URL': process.env.API_URL || 'http://localhost:3000',
+    'final WS_URL': process.env.WS_URL || 'ws://localhost:3000',
     timestamp: new Date().toISOString()
   });
   
   return json({
     ENV: {
-      API_URL: process.env.API_URL || 'http://localhost:3001',
-      WS_URL: process.env.WS_URL || 'ws://localhost:3001',
+      API_URL: process.env.API_URL || 'http://localhost:3000',
+      WS_URL: process.env.WS_URL || 'ws://localhost:3000',
       APP_NAME: process.env.APP_NAME || 'Baseline',
       APP_VERSION: process.env.APP_VERSION || '1.0.0',
     },
@@ -63,7 +63,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {children}
         <script
           dangerouslySetInnerHTML={{
-            __html: `window.ENV = ${JSON.stringify(data.ENV)}`,
+            __html: `window.ENV = ${JSON.stringify(data?.ENV || {})}`,
           }}
         />
         <ScrollRestoration />

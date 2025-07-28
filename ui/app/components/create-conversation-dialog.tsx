@@ -104,11 +104,6 @@ export function CreateConversationDialog({
     e.preventDefault()
     setError(null)
 
-    if (!title.trim()) {
-      setError("Please enter a conversation title")
-      return
-    }
-
     // Allow creating self-conversations (notes/reminders)
     if (selectedParticipants.length === 0) {
       setError("Please add at least one participant or create a self-conversation for notes")
@@ -126,7 +121,38 @@ export function CreateConversationDialog({
         ? 'DIRECT' 
         : 'GROUP'
       
-      await onCreateConversation(title.trim(), participantIds, type)
+      // Auto-generate title if not provided
+      let conversationTitle = title.trim()
+      if (!conversationTitle) {
+        if (type === 'DIRECT' && selectedParticipants.length === 1 && selectedParticipants[0].id !== currentUser.id) {
+          // 1-on-1 conversation: use the other person's name
+          const otherUser = selectedParticipants[0]
+          conversationTitle = otherUser.firstName && otherUser.lastName 
+            ? `${otherUser.firstName} ${otherUser.lastName}`.trim()
+            : otherUser.username
+        } else {
+          // Group conversation or self-conversation: use comma-separated participant names
+          // Include current user in group conversations but not in 1-on-1
+          const allParticipants = type === 'GROUP' || selectedParticipants[0].id === currentUser.id 
+            ? [currentUser, ...selectedParticipants.filter(p => p.id !== currentUser.id)]
+            : selectedParticipants
+          
+          conversationTitle = allParticipants
+            .map(p => {
+              // Use first name + last name if available, otherwise username
+              if (p.firstName && p.lastName) {
+                return `${p.firstName} ${p.lastName}`.trim()
+              } else if (p.firstName) {
+                return p.firstName
+              } else {
+                return p.username
+              }
+            })
+            .join(', ')
+        }
+      }
+      
+      await onCreateConversation(conversationTitle, participantIds, type)
       
       // Reset form
       setTitle("")

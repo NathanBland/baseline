@@ -5,7 +5,7 @@ const getAPIBaseURL = () => {
     return window.ENV.API_URL
   }
   // Server-side fallback
-  return 'http://localhost:3001'
+  return 'http://localhost:3000'
 }
 
 const getWSBaseURL = () => {
@@ -13,7 +13,7 @@ const getWSBaseURL = () => {
     return window.ENV.WS_URL
   }
   // Server-side fallback
-  return 'ws://localhost:3001'
+  return 'ws://localhost:3000'
 }
 
 const API_BASE_URL = getAPIBaseURL()
@@ -191,9 +191,20 @@ class ApiService {
       body: JSON.stringify({ email, password, username }),
     })
     
+    console.log('Full registration response:', response)
+    console.log('Token in response:', response.token)
+    
     this.currentUser = response.user
     if (typeof window !== 'undefined') {
       localStorage.setItem('current_user', JSON.stringify(response.user))
+      // Store token for WebSocket authentication
+      if (response.token) {
+        console.log('Storing token in localStorage:', response.token)
+        localStorage.setItem('auth_token', response.token)
+        console.log('Token stored, verifying:', localStorage.getItem('auth_token'))
+      } else {
+        console.error('No token in registration response!')
+      }
     }
     
     return response
@@ -265,7 +276,8 @@ class ApiService {
     // For now, we'll use a simple search endpoint
     // In a real implementation, this would respect privacy settings
     try {
-      return this.request<User[]>(`/users/search?q=${encodeURIComponent(query)}&userId=${this.currentUser.id}`)
+      const response = await this.request<{ users: User[], total: number, query: string }>(`/users/search?query=${encodeURIComponent(query)}&userId=${this.currentUser.id}`)
+      return response.users || []
     } catch (error) {
       // If search endpoint doesn't exist, return empty array
       console.warn('User search not available:', error)

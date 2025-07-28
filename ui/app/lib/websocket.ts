@@ -8,8 +8,8 @@ import type { Message, Conversation } from './api'
 
 export interface WebSocketMessage {
   type: 'message_created' | 'message_updated' | 'message_deleted' | 
-        'conversation_created' | 'conversation_updated' | 'user_joined' | 
-        'user_left' | 'typing_start' | 'typing_stop' | 'ping' | 'pong' |
+        'conversation_created' | 'conversation_created_confirmed' | 'conversation_updated' | 
+        'user_joined' | 'user_left' | 'typing_start' | 'typing_stop' | 'ping' | 'pong' |
         'join_conversation' | 'leave_conversation' | 'message' | 'connected' |
         'joined_conversation'
   data: any
@@ -20,6 +20,7 @@ export interface TypingIndicator {
   userId: string
   userName: string
   conversationId: string
+  isTyping?: boolean
 }
 
 
@@ -206,6 +207,8 @@ class WebSocketService {
       switch (message.type) {
         case 'message_created':
           this.handleMessageCreated(message.data)
+          // Acknowledge any pending message_created messages (fixes retry issue)
+          this.acknowledgePendingMessages('message_created')
           break
         case 'message_updated':
           this.handleMessageUpdated(message.data)
@@ -214,10 +217,24 @@ class WebSocketService {
           this.handleMessageDeleted(message.data)
           break
         case 'conversation_created':
-          this.handleConversationCreated(message.data)
+          console.log('🎉 Received conversation_created event:', message.data)
+          this.handleConversationCreated(message.data.conversation || message.data)
+          break
+        case 'conversation_created_confirmed':
+          // Handle when someone else creates a conversation that includes this user
+          console.log('🎉 New conversation confirmed:', message.data)
+          this.handleConversationCreated(message.data.conversation)
           break
         case 'conversation_updated':
           this.handleConversationUpdated(message.data)
+          break
+        case 'user_joined':
+          console.log('User joined conversation:', message.data)
+          // Could trigger UI update to show new participant
+          break
+        case 'user_left':
+          console.log('User left conversation:', message.data)
+          // Could trigger UI update to remove participant
           break
         case 'typing_start':
         case 'typing_stop':
@@ -276,8 +293,27 @@ class WebSocketService {
   }
 
   private handleConversationCreated(conversation: Conversation): void {
+    console.log('🏗️ Handling conversation creation:', {
+      id: conversation?.id,
+      title: conversation?.title,
+      type: conversation?.type,
+      listenersCount: this.conversationListeners.length
+    })
+    
+    if (!conversation) {
+      console.error('❌ No conversation data provided to handleConversationCreated')
+      return
+    }
+    
     offlineManager.addOfflineConversation(conversation)
-    this.conversationListeners.forEach(listener => listener(conversation))
+    console.log('✅ Added conversation to offline storage')
+    
+    this.conversationListeners.forEach((listener, index) => {
+      console.log(`📢 Notifying conversation listener ${index + 1}/${this.conversationListeners.length}`)
+      listener(conversation)
+    })
+    
+    console.log('✅ Conversation creation handling complete')
   }
 
   private handleConversationUpdated(conversation: Conversation): void {
@@ -287,12 +323,8 @@ class WebSocketService {
 
   private handleTypingIndicator(data: TypingIndicator, isTyping: boolean): void {
     this.typingListeners.forEach(listener => {
-      if (isTyping) {
-        listener(data)
-      } else {
-        // Send typing stop indicator
-        listener({ ...data, userId: '' })
-      }
+      // Always pass the full data with isTyping flag
+      listener({ ...data, isTyping })
     })
   }
 
