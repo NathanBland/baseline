@@ -15,7 +15,14 @@ await initializeDatabase()
 
 // Configure CORS allowed origins
 const getAllowedOrigins = (): string[] => {
-  // Ensure environment variables are loaded
+  // Debug environment variables
+  console.log('CORS Debug: NODE_ENV =', process.env.NODE_ENV)
+  console.log('CORS Debug: UI_URL =', process.env.UI_URL)
+  console.log('CORS Debug: CORS_ALLOWED_ORIGINS =', process.env.CORS_ALLOWED_ORIGINS)
+  console.log('CORS Debug: All env vars =', Object.keys(process.env).filter(key => 
+    key.includes('CORS') || key.includes('URL') || key.includes('NODE')
+  ))
+  
   const env = process.env.NODE_ENV || 'development'
   
   if (env === 'production') {
