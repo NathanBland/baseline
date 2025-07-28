@@ -34,4 +34,6 @@ COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY package.json ./
 EXPOSE 3001
 USER bun
-CMD ["bun", "run", "start"]
+# Ensure production environment is used
+ENV NODE_ENV=production
+CMD ["sh", "-c", "NODE_ENV=production bun run start"]

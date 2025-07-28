@@ -19,16 +19,15 @@ const getAllowedOrigins = (): string[] => {
   console.log('CORS Debug: NODE_ENV =', process.env.NODE_ENV)
   console.log('CORS Debug: UI_URL =', process.env.UI_URL)
   console.log('CORS Debug: CORS_ALLOWED_ORIGINS =', process.env.CORS_ALLOWED_ORIGINS)
-  console.log('CORS Debug: All env vars =', Object.keys(process.env).filter(key => 
-    key.includes('CORS') || key.includes('URL') || key.includes('NODE')
-  ))
   
-  const env = process.env.NODE_ENV || 'development'
+  const env = (process.env.NODE_ENV || 'development').trim().toLowerCase()
+  
+  console.log('CORS Debug: Final env value =', env)
   
   if (env === 'production') {
     // In production, use CORS_ALLOWED_ORIGINS or fallback to UI_URL
     const corsOrigins = process.env.CORS_ALLOWED_ORIGINS
-    if (corsOrigins) {
+    if (corsOrigins && corsOrigins.trim()) {
       const origins = corsOrigins.split(',').map(origin => origin.trim())
       console.log('CORS: Using CORS_ALLOWED_ORIGINS:', origins)
       return origins
