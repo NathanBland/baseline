@@ -3,7 +3,7 @@ import { cors } from '@elysiajs/cors'
 import { swagger } from '@elysiajs/swagger'
 import { jwt } from '@elysiajs/jwt'
 import { cookie } from '@elysiajs/cookie'
-import { websocket } from '@elysiajs/websocket'
+// import { websocket } from '@elysiajs/websocket' // Incompatible with current Elysia version
 import { initializeDatabase } from './db/index.js'
 import { authModule } from './modules/auth'
 import { conversationModule } from './modules/conversations'
@@ -15,7 +15,10 @@ await initializeDatabase()
 
 // Configure CORS allowed origins
 const getAllowedOrigins = (): string[] => {
-  if (process.env.NODE_ENV === 'production') {
+  // Ensure environment variables are loaded
+  const env = process.env.NODE_ENV || 'development'
+  
+  if (env === 'production') {
     // In production, use CORS_ALLOWED_ORIGINS or fallback to UI_URL
     const corsOrigins = process.env.CORS_ALLOWED_ORIGINS
     if (corsOrigins) {
@@ -35,10 +38,20 @@ const getAllowedOrigins = (): string[] => {
 
 const app = new Elysia()
   .use(cors({
-    origin: getAllowedOrigins(),
+    origin: (request: Request) => {
+      const origin = request.headers.get('origin')
+      const allowedOrigins = getAllowedOrigins()
+      
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return true
+      
+      // Check if the origin is in the allowed list
+      return allowedOrigins.includes(origin)
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+    exposeHeaders: ['Set-Cookie']
   }))
   .use(swagger({
     documentation: {
@@ -60,7 +73,7 @@ const app = new Elysia()
     secret: process.env.JWT_SECRET || 'your-secret-key'
   }))
   .use(cookie())
-  // .use(websocket()) // CAUSES createValidationError - incompatible with current Elysia version
+  // WebSocket functionality temporarily disabled due to plugin incompatibility
   .use(authModule)
   .use(conversationModule)
   .use(messageModule)
