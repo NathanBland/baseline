@@ -22,18 +22,31 @@ const getAllowedOrigins = (): string[] => {
     // In production, use CORS_ALLOWED_ORIGINS or fallback to UI_URL
     const corsOrigins = process.env.CORS_ALLOWED_ORIGINS
     if (corsOrigins) {
-      return corsOrigins.split(',').map(origin => origin.trim())
+      const origins = corsOrigins.split(',').map(origin => origin.trim())
+      console.log('CORS: Using CORS_ALLOWED_ORIGINS:', origins)
+      return origins
     }
-    return [process.env.UI_URL || 'http://localhost:3000']
+    
+    // Fallback origins for production
+    const fallbackOrigins = [
+      process.env.UI_URL || 'https://baseline.aqueous.network',
+      'https://baseline.aqueous.network',
+    ].filter(Boolean)
+    
+    console.log('CORS: Using production fallback origins:', fallbackOrigins)
+    return [...new Set(fallbackOrigins)] // Remove duplicates
   }
   
   // Development origins
-  return [
+  const devOrigins = [
     'http://localhost:5173',
     'http://localhost:3000', 
     'http://127.0.0.1:5173',
     'http://127.0.0.1:3000'
   ]
+  
+  console.log('CORS: Using development origins:', devOrigins)
+  return devOrigins
 }
 
 const app = new Elysia()
@@ -42,11 +55,19 @@ const app = new Elysia()
       const origin = request.headers.get('origin')
       const allowedOrigins = getAllowedOrigins()
       
+      console.log('CORS Request Origin:', origin)
+      console.log('CORS Allowed Origins:', allowedOrigins)
+      
       // Allow requests with no origin (like mobile apps or curl)
-      if (!origin) return true
+      if (!origin) {
+        console.log('CORS: Allowing request with no origin')
+        return true
+      }
       
       // Check if the origin is in the allowed list
-      return allowedOrigins.includes(origin)
+      const isAllowed = allowedOrigins.includes(origin)
+      console.log(`CORS: Origin ${origin} is ${isAllowed ? 'allowed' : 'denied'}`)
+      return isAllowed
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
