@@ -81,30 +81,52 @@ get_stack_status() {
 
 # Redeploy the stack
 redeploy_stack() {
+    local endpoint_id="${PORTAINER_ENDPOINT_ID:-1}"
     local stack_url="${PORTAINER_URL}/api/stacks/${STACK_ID}/git/redeploy"
-    local payload='{"prune": true, "pullImage": true}'
+    local payload='{"RepositoryReferenceName": "'${ENVIRONMENT:-main}'"}'
     local response
     
     log "Initiating redeployment for stack $STACK_ID..."
+    log "Environment: $ENVIRONMENT"
+    log "Endpoint ID: $endpoint_id"
+    log "Payload: $payload"
     
     response=$(curl -s -w "%{http_code}" -o response.json \
-        -X PUT \
+        -X POST \
         -H "X-API-Key: $PORTAINER_API_KEY" \
         -H "Content-Type: application/json" \
         -d "$payload" \
-        "$stack_url")
+        "${stack_url}?endpointId=${endpoint_id}")
     
-    if [[ "$response" == "200" ]]; then
+    if [[ "$response" == "200" ]] || [[ "$response" == "202" ]]; then
         log "✅ Redeployment initiated successfully"
         rm -f response.json
         return 0
-    elif [[ "$response" == "405" ]]; then
-        error "❌ HTTP 405 Method Not Allowed - check stack configuration"
-        cat response.json >&2
-        rm -f response.json
-        return 1
+    elif [[ "$response" == "400" ]]; then
+        # Try alternative payload format for different Portainer versions
+        log "⚠️  400 Bad Request, trying alternative format..."
+        local alt_payload='{"RepositoryReferenceName": "'${ENVIRONMENT:-main}'", "Prune": true, "PullImage": true}'
+        log "Alternative payload: $alt_payload"
+        
+        response=$(curl -s -w "%{http_code}" -o response.json \
+            -X POST \
+            -H "X-API-Key: $PORTAINER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$alt_payload" \
+            "${stack_url}?endpointId=${endpoint_id}")
+        
+        if [[ "$response" == "200" ]] || [[ "$response" == "202" ]]; then
+            log "✅ Redeployment initiated successfully (alternative format)"
+            rm -f response.json
+            return 0
+        else
+            error "❌ Redeployment failed with HTTP $response (alternative format)"
+            cat response.json >&2
+            rm -f response.json
+            return 1
+        fi
     else
-        error "❌ Redeployment failed (HTTP $response)"
+        error "❌ Redeployment failed with HTTP $response"
         cat response.json >&2
         rm -f response.json
         return 1
