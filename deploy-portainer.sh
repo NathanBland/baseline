@@ -93,7 +93,7 @@ redeploy_stack() {
     log "Payload: $payload"
     
     response=$(curl -s -w "%{http_code}" -o response.json \
-        -X POST \
+        -X PUT \
         -H "X-API-Key: $PORTAINER_API_KEY" \
         -H "Content-Type: application/json" \
         -d "$payload" \
@@ -103,29 +103,7 @@ redeploy_stack() {
         log "✅ Redeployment initiated successfully"
         rm -f response.json
         return 0
-    elif [[ "$response" == "400" ]]; then
-        # Try alternative payload format for different Portainer versions
-        log "⚠️  400 Bad Request, trying alternative format..."
-        local alt_payload='{"RepositoryReferenceName": "'${ENVIRONMENT:-main}'", "Prune": true, "PullImage": true}'
-        log "Alternative payload: $alt_payload"
-        
-        response=$(curl -s -w "%{http_code}" -o response.json \
-            -X POST \
-            -H "X-API-Key: $PORTAINER_API_KEY" \
-            -H "Content-Type: application/json" \
-            -d "$alt_payload" \
-            "${stack_url}?endpointId=${endpoint_id}")
-        
-        if [[ "$response" == "200" ]] || [[ "$response" == "202" ]]; then
-            log "✅ Redeployment initiated successfully (alternative format)"
-            rm -f response.json
-            return 0
-        else
-            error "❌ Redeployment failed with HTTP $response (alternative format)"
-            cat response.json >&2
-            rm -f response.json
-            return 1
-        fi
+
     else
         error "❌ Redeployment failed with HTTP $response"
         cat response.json >&2
