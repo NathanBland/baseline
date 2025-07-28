@@ -11,7 +11,6 @@ RUN apt-get update && apt-get install -y \
 
 # Set OpenSSL version for Prisma
 ENV OPENSSL_ROOT_DIR=/usr
-ENV PRISMA_QUERY_ENGINE_LIBRARY=/app/node_modules/.prisma/client/libquery_engine-debian-openssl-3.0.x.so.node
 
 # Install dependencies stage
 FROM base AS deps
