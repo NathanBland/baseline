@@ -19,6 +19,8 @@ const getAllowedOrigins = (): string[] => {
   console.log('CORS Debug: NODE_ENV =', process.env.NODE_ENV)
   console.log('CORS Debug: UI_URL =', process.env.UI_URL)
   console.log('CORS Debug: CORS_ALLOWED_ORIGINS =', process.env.CORS_ALLOWED_ORIGINS)
+  console.log(process.env);
+  console.log(Bun.env);
   
   const env = (process.env.NODE_ENV || 'development').trim().toLowerCase()
   
