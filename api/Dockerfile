@@ -42,8 +42,11 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY package.json ./
+COPY prisma ./prisma
+# Copy migrations directory
+COPY prisma/migrations ./prisma/migrations
 EXPOSE 3001
 USER bun
 # Ensure production environment is used
 ENV NODE_ENV=production
-CMD ["sh", "-c", "NODE_ENV=production bun run start"]
+CMD ["sh", "-c", "bun run db:migrate:deploy && bun run dist/index.js"]
