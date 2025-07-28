@@ -36,10 +36,6 @@ services:
   api:
     image: registry.aqueous.network/baseline-api:${IMAGE_TAG:-latest}
     container_name: baseline-api
-    # build:
-    #   context: ./api
-    #   dockerfile: Dockerfile
-    #   target: production
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
@@ -52,6 +48,10 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI}
     ports:
       - "${API_PORT:-3001}:3001"
     depends_on:
