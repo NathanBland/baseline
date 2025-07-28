@@ -2,6 +2,17 @@
 FROM oven/bun:1 AS base
 WORKDIR /app
 
+# Install OpenSSL and CA certificates to fix Prisma detection
+RUN apt-get update && apt-get install -y \
+    openssl \
+    libssl-dev \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set OpenSSL version for Prisma
+ENV OPENSSL_ROOT_DIR=/usr
+ENV PRISMA_QUERY_ENGINE_LIBRARY=/app/node_modules/.prisma/client/libquery_engine-debian-openssl-3.0.x.so.node
+
 # Install dependencies stage
 FROM base AS deps
 COPY package.json bun.lockb* ./
