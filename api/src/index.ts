@@ -23,7 +23,7 @@ const getAllowedOrigins = (): string[] => {
   console.log(process.env);
   console.log(Bun.env);
   
-  const env = (process.env.NODE_ENV || 'development').trim().toLowerCase()
+  const env = (Bun.env.NODE_ENV || process.env.NODE_ENV || 'development').trim().toLowerCase()
   
   console.log('CORS Debug: Final env value =', env)
   
