@@ -83,7 +83,8 @@ get_stack_status() {
 redeploy_stack() {
     local endpoint_id="${PORTAINER_ENDPOINT_ID:-1}"
     local stack_url="${PORTAINER_URL}/api/stacks/${STACK_ID}/git/redeploy"
-    local payload='{"RepositoryReferenceName": "'${ENVIRONMENT:-main}'"}'
+    # Always pull the latest image and prune unused services
+    local payload='{"RepositoryReferenceName": "'${ENVIRONMENT:-main}'", "PullImage": true, "Prune": true}'
     local response
     
     log "Initiating redeployment for stack $STACK_ID..."
