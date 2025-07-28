@@ -16,7 +16,7 @@ env:
 jobs:
   # Test jobs run in parallel
   test-api:
-    runs-on: docker
+    runs-on: ubuntu-latest
     container:
       image: oven/bun:1-alpine
     services:
@@ -46,7 +46,7 @@ jobs:
         continue-on-error: true
 
   test-ui:
-    runs-on: docker
+    runs-on: ubuntu-latest
     container:
       image: node:20-alpine
     steps:
@@ -73,9 +73,7 @@ jobs:
 
   # Build jobs run in parallel with tests (no dependency)
   build-api:
-    runs-on: docker
-    container:
-      image: oven/bun:1-alpine
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -99,9 +97,7 @@ jobs:
             NODE_ENV=production
 
   build-ui:
-    runs-on: docker
-    container:
-      image: node:20-alpine
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -125,7 +121,7 @@ jobs:
             NODE_ENV=production
 
   deploy-staging:
-    runs-on: docker
+    runs-on: ubuntu-latest
     needs: [build-api, build-ui]
     if: github.ref == 'refs/heads/develop'
     steps:
@@ -146,7 +142,7 @@ jobs:
           fi
 
   deploy-production:
-    runs-on: docker
+    runs-on: ubuntu-latest
     needs: [build-api, build-ui]
     if: github.ref == 'refs/heads/main'
     steps:
