@@ -54,6 +54,7 @@ services:
       OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI}
     ports:
       - "${API_PORT:-3001}:3001"
+      - "9229:9229"
     depends_on:
       postgres:
         condition: service_healthy
