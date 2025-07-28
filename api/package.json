@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target bun",
-    "start": "bun run --inspect 9229 dist/index.js",
+    "start": "bun run dist/index.js",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "db:generate": "prisma generate",
