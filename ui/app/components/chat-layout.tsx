@@ -9,7 +9,8 @@ import {
   Paperclip,
   Smile,
   Loader2,
-  RotateCcw
+  RotateCcw,
+  Menu
 } from "lucide-react"
 
 import { Button } from "~/components/ui/button"
@@ -109,6 +110,7 @@ export function ChatLayout({
   const [isMessageSearchOpen, setIsMessageSearchOpen] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isCreatingConversation, setIsCreatingConversation] = useState(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   // Auto-scroll functionality
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -197,17 +199,36 @@ export function ChatLayout({
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen relative">
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden" 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+      
       {/* Conversations Sidebar */}
-      <ChatSidebar
-        conversations={filteredConversations}
-        activeConversationId={activeConversationId}
-        currentUser={currentUser}
-        typingUsers={typingUsers}
-        onConversationSelect={onConversationSelect}
-        onCreateConversation={onCreateConversation}
-        onSearchUsers={onSearchUsers}
-      />
+      <div className={`
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
+        md:translate-x-0 transition-transform duration-300 ease-in-out
+        fixed md:relative z-50 md:z-auto
+        w-80 md:w-80 h-screen
+      `}>
+        <ChatSidebar
+          conversations={filteredConversations}
+          activeConversationId={activeConversationId}
+          currentUser={currentUser}
+          typingUsers={typingUsers}
+          onConversationSelect={(id) => {
+            onConversationSelect(id)
+            setIsSidebarOpen(false) // Close sidebar on mobile after selection
+          }}
+          onCreateConversation={onCreateConversation}
+          onSearchUsers={onSearchUsers}
+          onClose={() => setIsSidebarOpen(false)}
+        />
+      </div>
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
@@ -222,6 +243,16 @@ export function ChatLayout({
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
+                  {/* Mobile hamburger menu */}
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="md:hidden"
+                    onClick={() => setIsSidebarOpen(true)}
+                  >
+                    <Menu className="h-4 w-4" />
+                  </Button>
+                  
                   <Avatar>
                     <AvatarImage src={activeConversation.participants[0]?.avatar} />
                     <AvatarFallback>
@@ -434,14 +465,23 @@ export function ChatLayout({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
-            className="flex-1 flex items-center justify-center"
+            className="flex-1 flex items-center justify-center p-4"
           >
-            <div className="text-center">
+            <div className="text-center max-w-md">
               <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">Select a conversation</h3>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground mb-4">
                 Choose a conversation from the sidebar to start messaging
               </p>
+              {/* Mobile-only button to open sidebar */}
+              <Button 
+                variant="outline" 
+                className="md:hidden"
+                onClick={() => setIsSidebarOpen(true)}
+              >
+                <Menu className="h-4 w-4 mr-2" />
+                View Conversations
+              </Button>
             </div>
           </motion.div>
         )}

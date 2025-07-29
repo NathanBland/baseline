@@ -1,5 +1,5 @@
 import { beforeEach, describe, it, expect } from 'bun:test'
-import { setupUnitTestMocks } from './setup.test'
+import { setupUnitTestMocks, createTestUser, createAuthenticatedRequest } from './setup.test'
 import { app } from '../index'
 import { resetMockState } from './__mocks__/prisma'
 

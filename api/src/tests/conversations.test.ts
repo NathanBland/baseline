@@ -26,13 +26,11 @@ describe('Conversation Routes', () => {
     })
 
     it('should return conversations with participants and latest message when user has conversations', async () => {
-      // Given: An authenticated user with a conversation containing a message
-      const user = await createTestUser({ id: 'mock-user-with-conversations' }) // Match mock participant
-      console.log('🔍 TEST: Created user:', user)
-      
-      const conversation = await createTestConversation(user.id, { title: 'Test Chat' })
-      console.log('🔍 TEST: Created conversation:', conversation)
-      
+      // Given: An authenticated user with conversations
+      const user = await createTestUser({ id: 'mock-user-with-conversations' })
+      const conversation = await createTestConversation(user.id, {
+        title: 'Test Chat'
+      })
       const message = await createTestMessage(conversation.id, user.id)
       console.log('🔍 TEST: Created message:', message)
       

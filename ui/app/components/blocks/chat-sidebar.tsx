@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "@remix-run/react"
 import { motion, AnimatePresence } from "motion/react"
-import { Plus, Settings, Search } from "lucide-react"
+import { Plus, Settings, Search, X } from "lucide-react"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { ScrollArea } from "~/components/ui/scroll-area"
@@ -48,6 +48,7 @@ interface ChatSidebarProps {
   onConversationSelect: (conversationId: string) => void
   onCreateConversation: (title: string, participantIds: string[], type?: 'DIRECT' | 'GROUP') => Promise<void>
   onSearchUsers: (query: string) => Promise<User[]>
+  onClose?: () => void // Optional close handler for mobile
 }
 
 export function ChatSidebar({
@@ -57,7 +58,8 @@ export function ChatSidebar({
   typingUsers,
   onConversationSelect,
   onCreateConversation,
-  onSearchUsers
+  onSearchUsers,
+  onClose
 }: ChatSidebarProps) {
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState("")
@@ -85,7 +87,7 @@ export function ChatSidebar({
         initial={{ x: -300 }}
         animate={{ x: 0 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="w-80 border-r bg-muted/30 flex flex-col"
+        className="w-80 border-r bg-muted/80 flex flex-col h-screen"
       >
         {/* Header */}
         <div className="p-4 border-b">
@@ -95,6 +97,18 @@ export function ChatSidebar({
               <ConnectionIndicator variant="dot" />
             </div>
             <div className="flex gap-2">
+              {/* Mobile close button */}
+              {onClose && (
+                <Button 
+                  size="sm" 
+                  variant="ghost"
+                  onClick={onClose}
+                  className="md:hidden"
+                  title="Close sidebar"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
               <Button 
                 size="sm" 
                 variant="ghost"

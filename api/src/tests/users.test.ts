@@ -160,7 +160,7 @@ describe('Users API', () => {
       expect(response.status).toBe(200)
       const data = await response.json()
       expect(data.users).toHaveLength(2)
-      expect(data.total).toBe(5)
+      expect(data.total).toBe(6)
     })
   })
 

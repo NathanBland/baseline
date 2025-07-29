@@ -597,11 +597,18 @@ export default function ChatPage() {
         console.log('📤 Message sent via WebSocket')
         // Keep loading state true until real message comes back
       } else {
-        throw new Error('WebSocket not connected')
+        // Fallback to API if WebSocket is not available
+        console.log('📤 WebSocket not available, falling back to API')
+        const response = await apiService.sendMessage(activeConversationId, content)
+        
+        // Remove optimistic message and add real one
+        setMessages(prev => {
+          const filtered = prev.filter(m => m.id !== optimisticMessage.id)
+          const realMessage = adaptMessage(response)
+          return [...filtered, realMessage]
+        })
+        setIsMessageSending(false)
       }
-      
-      // Send message via API
-      const response = await apiService.sendMessage(activeConversationId, content)
       
       // If this conversation was pending (newly created), make it visible to other participants
       if (pendingConversations.has(activeConversationId)) {
