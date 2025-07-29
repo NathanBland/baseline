@@ -1,6 +1,6 @@
 import type { MetaFunction } from "@remix-run/node"
-import { useState, useEffect } from "react"
-import { useNavigate } from "@remix-run/react"
+import { useState, useEffect, useRef } from "react"
+import { useNavigate, useSearchParams } from "@remix-run/react"
 import { motion } from "motion/react"
 
 import { ChatLayout } from "~/components/chat-layout"
@@ -57,8 +57,8 @@ const formatTimestamp = (dateString: string | Date | undefined): string => {
   }
 }
 
-// Adapter functions
-const adaptConversation = (conv: ApiConversation): ChatConversation => {
+// Adapter functions  
+const adaptConversation = (conv: ApiConversation, unreadCounts: Map<string, number>): ChatConversation => {
   // Safely extract participants with nested user structure
   const participants = conv.participants?.map(p => ({
     id: p.user?.id || p.id,
@@ -71,7 +71,7 @@ const adaptConversation = (conv: ApiConversation): ChatConversation => {
     title: conv.title,
     lastMessage: conv.lastMessage?.content || conv.messages?.[conv.messages.length - 1]?.content || 'No messages yet',
     timestamp: formatTimestamp(conv.updatedAt),
-    unreadCount: 0, // TODO: Implement unread count from API
+    unreadCount: unreadCounts.get(conv.id) || 0,
     participants
   }
 }
@@ -109,11 +109,75 @@ export default function ChatPage() {
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null)
   const [isMessageSending, setIsMessageSending] = useState(false)
   const [failedMessages, setFailedMessages] = useState<Map<string, PendingMessage>>(new Map())
+  const [unreadCounts, setUnreadCounts] = useState<Map<string, number>>(new Map())
+  const [pendingConversations, setPendingConversations] = useState<Set<string>>(new Set()) // Conversations waiting for creator's first message
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  
+  // Use ref to track active conversation ID to avoid stale closures in WebSocket listeners
+  const activeConversationIdRef = useRef<string | undefined>(activeConversationId)
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    activeConversationIdRef.current = activeConversationId
+  }, [activeConversationId])
+  
+  // Update conversations when unread counts change to show badges
+  useEffect(() => {
+    console.log('🔄 Updating conversations with unread counts:', Array.from(unreadCounts.entries()))
+    setConversations(prev => prev.map(conv => {
+      const newUnreadCount = unreadCounts.get(conv.id) || 0
+      console.log(`🔄 Conversation ${conv.id}: unread count ${conv.unreadCount} -> ${newUnreadCount}`)
+      return {
+        ...conv,
+        unreadCount: newUnreadCount
+      }
+    }))
+  }, [unreadCounts])
+  
+  // Handle initial conversation loading from URL parameter
+  useEffect(() => {
+    const conversationIdFromUrl = searchParams.get('c')
+    
+    // Skip URL sync if we're in the middle of a programmatic URL update
+    if (isUpdatingUrlRef.current) {
+      console.log('🔄 Skipping URL sync - programmatic update in progress')
+      isUpdatingUrlRef.current = false // Reset flag
+      return
+    }
+    
+    if (conversationIdFromUrl && conversationIdFromUrl !== activeConversationId && conversations.length > 0) {
+      console.log('🔄 URL sync triggered for conversation:', conversationIdFromUrl)
+      // Check if the conversation exists in our loaded conversations
+      const conversationExists = conversations.some(conv => conv.id === conversationIdFromUrl)
+      if (conversationExists) {
+        handleConversationSelect(conversationIdFromUrl)
+      } else {
+        // If conversation doesn't exist, remove from URL
+        setSearchParams(prev => {
+          const newParams = new URLSearchParams(prev)
+          newParams.delete('c')
+          return newParams
+        })
+      }
+    }
+  }, [conversations, searchParams])
 
+  // Prevent React StrictMode double execution in development
+  const initRef = useRef(false)
+  // Prevent race condition between manual conversation selection and URL sync
+  const isUpdatingUrlRef = useRef(false)
+  
   // Initialize user and data on mount
   useEffect(() => {
+    // Guard against React StrictMode double execution
+    if (initRef.current) return
+    initRef.current = true
+    
     let unsubscribeFailure: (() => void) | null = null
+    let unsubscribeMessage: (() => void) | null = null
+    let unsubscribeConversation: (() => void) | null = null
+    let unsubscribeTyping: (() => void) | null = null
     
     const initializeChat = async () => {
       try {
@@ -126,10 +190,41 @@ export default function ChatPage() {
         // Get user conversations with offline handling
         try {
           const userConversations = await apiService.getConversations()
-          setConversations(userConversations.map(adaptConversation))
+          
+          // Calculate initial unread counts for each conversation
+          const initialUnreadCounts = new Map<string, number>()
+          
+          for (const conv of userConversations) {
+            // For now, we'll calculate unread counts based on simple heuristics
+            // since the backend doesn't have last_read tracking yet.
+            // This can be improved when we add proper unread count endpoints.
+            
+            // If conversation has messages and was recently updated, assume some unread
+            const hasRecentActivity = (conv.messages?.length ?? 0) > 0
+            const lastMessage = conv.messages?.[0]
+            const isOwnMessage = lastMessage?.author?.id === user.id
+            
+            // Don't mark own messages as unread
+            if (hasRecentActivity && !isOwnMessage) {
+              // Simple heuristic: if last message is not from current user, assume 1 unread
+              // This will be improved when we add proper last_read tracking to the backend
+              initialUnreadCounts.set(conv.id, 1)
+            }
+          }
+          
+          // Update unread counts state with initial values from API
+          setUnreadCounts(initialUnreadCounts)
+          console.log('📊 Loaded initial unread counts from API:', Array.from(initialUnreadCounts.entries()))
+          
+          // Sort conversations by most recent activity (updatedAt) before adapting
+          const sortedConversations = userConversations.sort((a, b) => {
+            const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime()
+            const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime()
+            return bTime - aTime // Most recent first
+          })
+          setConversations(sortedConversations.map(conv => adaptConversation(conv, initialUnreadCounts)))
         } catch (error) {
           console.warn('Failed to load conversations, app will work in offline mode:', error)
-          // Set empty conversations array for offline mode - let connection indicator show offline status
           setConversations([])
           // Don't set error state - let chat UI render normally in offline mode
         }
@@ -137,11 +232,32 @@ export default function ChatPage() {
         // Initialize WebSocket connection
         webSocketService.connect()
         
-        // Set up WebSocket event listeners
-        webSocketService.onMessage((message: ApiMessage) => {
+        // Set up WebSocket event listeners with proper cleanup
+        unsubscribeMessage = webSocketService.onMessage((message: ApiMessage) => {
           const adaptedMessage = adaptMessage(message)
           
+          // Handle unread counts for messages not in active conversation
+          if (message.conversationId !== activeConversationIdRef.current) {
+            // Increment unread count for the conversation this message belongs to
+            setUnreadCounts(prev => {
+              const newCounts = new Map(prev)
+              const currentCount = newCounts.get(message.conversationId) || 0
+              const newCount = currentCount + 1
+              newCounts.set(message.conversationId, newCount)
+              console.log('📨 Incremented unread count for conversation:', message.conversationId, 'from:', currentCount, 'to:', newCount)
+              console.log('📨 All unread counts:', Array.from(newCounts.entries()))
+              return newCounts
+            })
+          }
+          
+          // Only add message to the UI if it belongs to the currently active conversation
           setMessages(prev => {
+            // Get current active conversation ID from the ref to avoid stale closures
+            if (message.conversationId !== activeConversationIdRef.current) {
+              console.log('Message is for different conversation:', message.conversationId, 'vs active:', activeConversationIdRef.current)
+              return prev // Don't add to current conversation display
+            }
+            
             // Check if this exact message already exists by ID (prevent duplicates)
             const messageExists = prev.some(m => m.id === adaptedMessage.id)
             if (messageExists) {
@@ -172,24 +288,34 @@ export default function ChatPage() {
             return [...withoutOptimistic, adaptedMessage]
           })
           
-          // Update conversation list to show latest message
-          setConversations(prev => prev.map(conv => {
-            if (conv.id === message.conversationId) {
-              return {
-                ...conv,
-                lastMessage: message.content,
-                timestamp: formatTimestamp(message.createdAt)
+          // Update conversation list to show latest message and re-sort by activity
+          setConversations(prev => {
+            const updated = prev.map(conv => {
+              if (conv.id === message.conversationId) {
+                return {
+                  ...conv,
+                  lastMessage: message.content,
+                  timestamp: formatTimestamp(message.createdAt),
+                  _lastActivity: message.createdAt // Store for sorting
+                }
               }
-            }
-            return conv
-          }))
+              return conv
+            })
+            
+            // Re-sort by most recent activity
+            return updated.sort((a, b) => {
+              const aTime = new Date((a as any)._lastActivity || a.timestamp || 0).getTime()
+              const bTime = new Date((b as any)._lastActivity || b.timestamp || 0).getTime()
+              return bTime - aTime // Most recent first
+            })
+          })
         })
         
-        webSocketService.onConversation((conversation: ApiConversation) => {
+        unsubscribeConversation = webSocketService.onConversation((conversation: ApiConversation) => {
           console.log('🏗️ Received conversation event:', conversation.id)
           setConversations(prev => {
             const existingIndex = prev.findIndex(c => c.id === conversation.id)
-            const adaptedConversation = adaptConversation(conversation)
+            const adaptedConversation = adaptConversation(conversation, unreadCounts)
             
             if (existingIndex >= 0) {
               // Update existing conversation
@@ -206,7 +332,7 @@ export default function ChatPage() {
         })
         
         // Set up typing indicator WebSocket listener
-        webSocketService.onTyping((typingData: any) => {
+        unsubscribeTyping = webSocketService.onTyping((typingData: any) => {
           const { userId, userName, conversationId, isTyping } = typingData
           
           if (isTyping) {
@@ -288,7 +414,16 @@ export default function ChatPage() {
       if (wsService) {
         wsService.disconnect()
       }
-      // Cleanup failure listener to prevent duplicates
+      // Cleanup all event listeners to prevent duplicates
+      if (unsubscribeMessage) {
+        unsubscribeMessage()
+      }
+      if (unsubscribeConversation) {
+        unsubscribeConversation()
+      }
+      if (unsubscribeTyping) {
+        unsubscribeTyping()
+      }
       if (unsubscribeFailure) {
         unsubscribeFailure()
       }
@@ -296,20 +431,47 @@ export default function ChatPage() {
   }, [])
 
   const handleConversationSelect = async (conversationId: string) => {
+    console.log('🔄 handleConversationSelect called with:', conversationId, 'current active:', activeConversationId)
     try {
       // Leave previous conversation if any
       if (activeConversationId && wsService && wsService.isConnected()) {
         wsService.leaveConversation(activeConversationId)
       }
       
+      console.log('🔄 Setting active conversation ID to:', conversationId)
       setActiveConversationId(conversationId)
       setError(null)
       
+      // Clear unread count for this conversation when opened
+      setUnreadCounts(prev => {
+        const newCounts = new Map(prev)
+        if (newCounts.has(conversationId)) {
+          console.log('✅ Clearing unread count for conversation:', conversationId)
+          newCounts.delete(conversationId)
+        }
+        return newCounts
+      })
+      
+      // Update URL to reflect selected conversation
+      console.log('🔗 Updating URL with conversation ID:', conversationId)
+      isUpdatingUrlRef.current = true
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev)
+        newParams.set('c', conversationId)
+        console.log('🔗 New URL params:', newParams.toString())
+        return newParams
+      })
+      
       // Load messages for the selected conversation
+      console.log('📬 Loading messages for conversation:', conversationId)
       const response = await apiService.getMessages(conversationId)
+      console.log('📬 API response:', response)
       // Handle new API response structure with messages array
       const conversationMessages = response.messages || []
-      setMessages(conversationMessages.map(adaptMessage))
+      console.log('📬 Found', conversationMessages.length, 'messages')
+      const adaptedMessages = conversationMessages.map(adaptMessage)
+      console.log('📬 Adapted messages:', adaptedMessages)
+      setMessages(adaptedMessages)
       
       // Join the new conversation for real-time updates
       if (wsService && wsService.isConnected()) {
@@ -438,6 +600,25 @@ export default function ChatPage() {
         throw new Error('WebSocket not connected')
       }
       
+      // Send message via API
+      const response = await apiService.sendMessage(activeConversationId, content)
+      
+      // If this conversation was pending (newly created), make it visible to other participants
+      if (pendingConversations.has(activeConversationId)) {
+        setPendingConversations(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(activeConversationId)
+          return newSet
+        })
+        
+        // Send WebSocket event to notify other participants that conversation is now active
+        if (wsService) {
+          wsService.sendMessage('conversation_updated', {
+            conversationId: activeConversationId
+          })
+        }
+      }
+      
       // Real message will replace optimistic one via WebSocket event listener
       
     } catch (error) {
@@ -462,8 +643,11 @@ export default function ChatPage() {
       const newConversation = await apiService.createConversation(title, participantIds)
       
       // Add conversation to local state
-      const adaptedConversation = adaptConversation(newConversation)
+      const adaptedConversation = adaptConversation(newConversation, unreadCounts)
       setConversations(prev => [adaptedConversation, ...prev])
+      
+      // Mark this conversation as pending (only visible to creator until first message)
+      setPendingConversations(prev => new Set(prev).add(newConversation.id))
       
       // Automatically select the new conversation
       setActiveConversationId(newConversation.id)
@@ -568,13 +752,28 @@ export default function ChatPage() {
     >
       <ErrorBoundary fallback={ChatErrorFallback}>
         <ChatLayout
-          conversations={conversations}
+          conversations={conversations.filter(conv => {
+            // If conversation is pending (newly created), only show to creator
+            if (pendingConversations.has(conv.id)) {
+              // Check if current user is the creator by looking at participants
+              const isCreator = conv.participants.some(p => p.id === currentUser?.id)
+              return isCreator
+            }
+            // Show all non-pending conversations to everyone
+            return true
+          })}
           activeConversationId={activeConversationId}
           messages={messages}
           currentUser={{
             id: currentUser?.id || '',
-            name: currentUser?.username || 'Unknown',
-            avatar: currentUser?.avatar || undefined
+            username: currentUser?.username || 'Unknown',
+            email: currentUser?.email || '',
+            firstName: currentUser?.firstName,
+            lastName: currentUser?.lastName,
+            avatar: currentUser?.avatar,
+            emailVerified: currentUser?.emailVerified,
+            createdAt: currentUser?.createdAt,
+            updatedAt: currentUser?.updatedAt
           }}
           typingUsers={typingUsers}
           isMessageSending={isMessageSending}

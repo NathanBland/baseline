@@ -213,7 +213,7 @@
   --secondary: #004052; /* tab.inactiveBackground */
   --secondary-foreground: #93A1A1; /* tab.inactiveForeground */
   --muted: #003847; /* activityBar.background */
-  --muted-foreground: #93A1A1; /* statusBar.foreground */
+  --muted-foreground: #A8B5B2; /* lighter variant for better contrast on dark sidebar */
   --accent: #268BD2; /* blue accent */
   --accent-foreground: #FDF6E3; /* light text */
   --destructive: #DC322F; /* red */

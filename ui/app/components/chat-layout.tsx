@@ -2,10 +2,8 @@ import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import {
   MessageSquare,
-  Settings,
-  Search,
   Send,
-  Plus,
+  Search,
   MoreHorizontal,
   X,
   Paperclip,
@@ -19,9 +17,7 @@ import { Input } from "~/components/ui/input"
 import { ScrollArea } from "~/components/ui/scroll-area"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { getConversationDisplayTitle } from "~/lib/conversation-utils"
-import { ConnectionIndicator } from "~/components/connection-indicator"
-import { Badge } from "~/components/ui/badge"
-import { CreateConversationDialog } from "~/components/create-conversation-dialog"
+import { ChatSidebar } from "~/components/blocks/chat-sidebar"
 
 interface Conversation {
   id: string
@@ -64,15 +60,23 @@ interface User {
   avatar?: string | null
 }
 
+interface User {
+  id: string
+  username: string
+  email: string
+  firstName?: string | null
+  lastName?: string | null
+  avatar?: string | null
+  emailVerified?: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
 interface ChatLayoutProps {
   conversations: Conversation[]
   activeConversationId?: string
   messages: Message[]
-  currentUser: {
-    id: string
-    name: string
-    avatar?: string
-  }
+  currentUser: User
   typingUsers: TypingIndicator[]
   isMessageSending?: boolean
   onConversationSelect: (conversationId: string) => void
@@ -195,102 +199,15 @@ export function ChatLayout({
   return (
     <div className="flex h-screen">
       {/* Conversations Sidebar */}
-      <motion.div
-        initial={{ x: -300 }}
-        animate={{ x: 0 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
-        className="w-80 border-r bg-muted/30 flex flex-col"
-      >
-        {/* Header */}
-        <div className="p-4 border-b">
-          <div className="p-4 border-b flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h2 className="font-semibold">Messages</h2>
-              <ConnectionIndicator variant="dot" />
-            </div>
-            <div className="flex gap-2">
-              <Button 
-                size="sm" 
-                variant="ghost"
-                onClick={() => setIsCreateDialogOpen(true)}
-                title="Create new conversation"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-              <Button 
-                size="sm" 
-                variant="ghost"
-                onClick={() => window.location.href = '/settings'}
-                title="Settings"
-                className="flex items-center gap-1"
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search conversations..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </div>
-
-        {/* Conversations List */}
-        <ScrollArea className="flex-1">
-          <div className="p-2">
-            <AnimatePresence>
-              {filteredConversations.map((conversation, index) => (
-                <motion.div
-                  key={conversation.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ delay: index * 0.05 }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Button
-                    variant={activeConversationId === conversation.id ? "secondary" : "ghost"}
-                    className="w-full p-3 h-auto justify-start mb-1"
-                    onClick={() => onConversationSelect(conversation.id)}
-                  >
-                    <div className="flex items-start gap-3 w-full">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={conversation.participants[0]?.avatar} />
-                        <AvatarFallback>
-                          {conversation.participants[0]?.name.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 text-left overflow-hidden min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="font-medium truncate flex-1 min-w-0">{getConversationDisplayTitle(conversation, currentUser)}</p>
-                          <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
-                            {conversation.timestamp}
-                          </span>
-                        </div>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {conversation.lastMessage}
-                        </p>
-                      </div>
-                      {conversation.unreadCount > 0 && (
-                        <Badge variant="default" className="ml-auto">
-                          {conversation.unreadCount}
-                        </Badge>
-                      )}
-                    </div>
-                  </Button>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        </ScrollArea>
-      </motion.div>
+      <ChatSidebar
+        conversations={filteredConversations}
+        activeConversationId={activeConversationId}
+        currentUser={currentUser}
+        typingUsers={typingUsers}
+        onConversationSelect={onConversationSelect}
+        onCreateConversation={onCreateConversation}
+        onSearchUsers={onSearchUsers}
+      />
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
@@ -426,9 +343,9 @@ export function ChatLayout({
                       </motion.div>
                       {message.authorId === currentUser.id && (
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={currentUser.avatar} />
+                          <AvatarImage src={currentUser.avatar || undefined} />
                           <AvatarFallback>
-                            {currentUser.name.slice(0, 2).toUpperCase()}
+                            {currentUser.username.slice(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                       )}
@@ -530,22 +447,7 @@ export function ChatLayout({
         )}
       </div>
 
-      {/* Conversation Creation Dialog */}
-      <CreateConversationDialog
-        isOpen={isCreateDialogOpen}
-        onClose={() => setIsCreateDialogOpen(false)}
-        onCreateConversation={handleCreateConversation}
-        onSearchUsers={onSearchUsers}
-        currentUser={{
-          id: currentUser.id,
-          username: currentUser.name,
-          email: currentUser.name + '@example.com', // Placeholder - will be replaced with real user data
-          firstName: null,
-          lastName: null,
-          avatar: currentUser.avatar
-        }}
-        isLoading={isCreatingConversation}
-      />
+
     </div>
   )
 }
