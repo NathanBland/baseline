@@ -347,7 +347,7 @@ export const authModule = new Elysia({ prefix: '/auth' })
         session.maxAge = 60 * 60 * 24 * 30 // 30 days
 
         // Redirect to UI - session cookie is already set
-        const uiUrl = process.env.UI_URL || 'http://localhost:5173'
+        const uiUrl = Bun.env.UI_URL || 'http://localhost:5173'
         return redirect(`${uiUrl}/chat`)
         
       } catch (error) {
