@@ -3,6 +3,7 @@ import { useState, useEffect } from "react"
 import { motion } from "motion/react"
 
 import { UserSettings } from "~/components/user-settings"
+import { apiService } from "~/lib/api"
 
 export const meta: MetaFunction = () => {
   return [
@@ -43,32 +44,19 @@ export default function SettingsPage() {
           })
         }
         
-        // Then fetch fresh data from API using session cookies
-        const apiUrl = (window as any).ENV?.API_BASE_URL || 'http://localhost:3000'
-        const response = await fetch(`${apiUrl}/auth/me`, {
-          method: 'GET',
-          credentials: 'include', // Include session cookies
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch user data')
+        // Then fetch fresh data from API using the API client
+        const userData = await apiService.getCurrentUser()
+        const user = {
+          id: userData.id,
+          name: userData.username || userData.firstName || 'User',
+          email: userData.email,
+          avatar: userData.avatar || undefined,
+          username: userData.username
         }
         
-        const data = await response.json()
-        const userData = {
-          id: data.user.id,
-          name: data.user.username || data.user.name || 'User',
-          email: data.user.email,
-          avatar: data.user.avatar,
-          username: data.user.username
-        }
-        
-        setUser(userData)
+        setUser(user)
         // Update localStorage cache
-        localStorage.setItem('current_user', JSON.stringify(data.user))
+        localStorage.setItem('current_user', JSON.stringify(userData))
         
       } catch (err) {
         console.error('Failed to fetch user data:', err)
