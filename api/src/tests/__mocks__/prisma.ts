@@ -201,6 +201,16 @@ export const mockPrisma = {
       // Track the created conversation for realistic behavior
       createdConversations.push(newConversation)
       
+      // ALSO track participants for authorization checks
+      if (data.participants) {
+        data.participants.forEach((participant: any) => {
+          createdParticipants.push({
+            ...participant,
+            conversationId: newConversation.id
+          })
+        })
+      }
+      
       return newConversation
     },
     findUnique: async (query: any) => {
@@ -292,81 +302,36 @@ export const mockPrisma = {
       
       return allConversations
     },
-    findFirst: async (query: any) => {
-      // Handle getConversationById query: { where: { id, participants: { some: { userId } } } }
-      const { where, include } = query || {}
-      
-      if (where && where.id && where.participants && where.participants.some && where.participants.some.userId) {
-        const conversationId = where.id
-        const userId = where.participants.some.userId
-        
-        // Find conversation in tracked conversations
-        const trackedConversation = createdConversations.find(conv => 
-          conv.id === conversationId && 
-          conv.participants.some((p: any) => p.userId === userId)
-        )
-        
-        if (trackedConversation) {
-          // Include related messages if requested
-          const relatedMessages = createdMessages.filter(msg => msg.conversationId === conversationId)
-          return {
-            ...trackedConversation,
-            messages: include?.messages ? relatedMessages.slice(0, 10) : undefined, // Take 10 as per service query
-            _count: include?._count ? { messages: relatedMessages.length } : undefined
-          }
-        }
-        
-        // Fallback: check if matches static mock
-        if (mockConversation.id === conversationId && 
-            mockConversation.participants.some(p => p.userId === userId)) {
-          const relatedMessages = createdMessages.filter(msg => msg.conversationId === conversationId)
-          return {
-            ...mockConversation,
-            messages: include?.messages ? relatedMessages.slice(0, 10) : undefined,
-            _count: include?._count ? { messages: relatedMessages.length } : undefined
-          }
-        }
-        
-        return null // Conversation not found or user not authorized
-      }
-      
-      // Default behavior for other queries
-      return createdConversations.length > 0 ? createdConversations[0] : mockConversation
-    },
-    update: async ({ data }: { data: any }) => {
-      // Use input data to create a realistic updated conversation response
-      return {
-        ...mockConversation,
-        title: data.title || mockConversation.title,
-        updatedAt: new Date() // Update timestamp
-      }
-    },
     delete: async () => mockConversation,
-    deleteMany: async () => ({ count: 1 })
+    deleteMany: async () => ({ count: 1 }),
+    update: async ({ where, data, include }: any) => {
+      // Update input-driven conversation for BDD compliance
+      const updatedConversation = {
+        ...mockConversation,
+        id: where.id,
+        ...data,
+        updatedAt: new Date(),
+        participants: include?.participants ? mockConversation.participants : undefined,
+        messages: include?.messages ? mockConversation.messages : undefined,
+        _count: include?._count ? { messages: mockConversation.messages.length } : undefined
+      }
+      createdConversations = createdConversations.map(c => 
+        c.id === where.id ? updatedConversation : c
+      )
+      return updatedConversation
+    }
   },
   conversationParticipant: {
     create: async ({ data, include }: { data: any, include?: any }) => {
-      // Create input-driven participant for BDD compliance
-      const newParticipant: any = {
-        id: `mock-participant-${data.userId}`,
-        userId: data.userId,
-        conversationId: data.conversationId,
-        role: data.role || 'MEMBER',
+      // Track created participants for BDD test isolation
+      const participant = {
+        id: `participant-${Date.now()}`,
+        ...data,
         joinedAt: new Date(),
+        user: include?.user ? mockUser : undefined
       }
-      
-      // Handle include for user data if requested
-      if (include?.user) {
-        newParticipant.user = {
-          id: data.userId,
-          username: `user-${data.userId}`,
-        }
-      }
-      
-      // Track the created participant for proper BDD test isolation
-      createdParticipants.push(newParticipant)
-      
-      return newParticipant
+      createdParticipants.push(participant)
+      return participant
     },
     findUnique: async () => mockConversation.participants[0],
     findFirst: async (query: any) => {
@@ -395,7 +360,7 @@ export const mockPrisma = {
         
         // SECOND: Check tracked conversations for participants (created by createTestConversation)
         for (const trackedConv of createdConversations) {
-          if (trackedConv.id === where.conversationId || trackedConv.conversationId === where.conversationId) {
+          if (trackedConv.id === where.conversationId) {
             const participant = trackedConv.participants.find((p: any) => {
               const matchesUser = p.userId === where.userId
               // Handle both simple role matching and Prisma 'in' operator
@@ -415,39 +380,28 @@ export const mockPrisma = {
           }
         }
         
-        // Fallback to static mock conversation participants
-        const participant = mockConversation.participants.find(p => {
-          const matchesConversation = p.conversationId === where.conversationId
-          const matchesUser = p.userId === where.userId
-          // Handle both simple role matching and Prisma 'in' operator
-          let matchesRole = true
-          if (where.role) {
-            if (where.role.in && Array.isArray(where.role.in)) {
-              matchesRole = where.role.in.includes(p.role)
-            } else {
-              matchesRole = p.role === where.role
+        // THIRD: Fallback to static mock conversation
+        if (mockConversation.id === where.conversationId) {
+          const participant = mockConversation.participants.find((p: any) => {
+            const matchesUser = p.userId === where.userId
+            let matchesRole = true
+            if (where.role) {
+              if (where.role.in && Array.isArray(where.role.in)) {
+                matchesRole = where.role.in.includes(p.role)
+              } else {
+                matchesRole = p.role === where.role
+              }
             }
+            return matchesUser && matchesRole
+          })
+          if (participant) {
+            return participant
           }
-          
-          return matchesConversation && matchesUser && matchesRole
-        })
-        
-        return participant || null
+        }
       }
-      return mockConversation.participants[0]
-    },
-    createMany: async ({ data }: { data: any[] }) => {
-      // Handle createMany for conversation participant creation
-      const participants = data.map((participantData: any, index: number) => ({
-        id: `mock-participant-${index}`,
-        userId: participantData.userId,
-        conversationId: participantData.conversationId,
-        role: participantData.role || 'MEMBER',
-        joinedAt: new Date(),
-      }))
       
-      // Return count of created participants
-      return { count: participants.length }
+      // Handle other query patterns for backward compatibility
+      return createdParticipants[0] || mockConversation.participants[0] || null
     },
     findMany: async () => mockConversation.participants,
     update: async () => mockConversation.participants[0],

@@ -1,6 +1,8 @@
 import type { MetaFunction } from "@remix-run/node"
 import { useState, useEffect } from "react"
 import { motion } from "motion/react"
+import { ChevronLeft } from "lucide-react"
+import { Link } from "@remix-run/react"
 
 import { UserSettings } from "~/components/user-settings"
 import { apiService } from "~/lib/api"
@@ -227,11 +229,25 @@ export default function SettingsPage() {
       transition={{ duration: 0.3 }}
       className="min-h-screen bg-background"
     >
-      <UserSettings
-        user={user}
-        onLogout={handleLogout}
-        onUpdateProfile={handleUpdateProfile}
-      />
+      <div className="container mx-auto py-8 px-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="mb-6">
+            <Link
+              to="/chat"
+              className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Back to Chat
+            </Link>
+          </div>
+          
+          <UserSettings
+            user={user}
+            onLogout={handleLogout}
+            onUpdateProfile={handleUpdateProfile}
+          />
+        </div>
+      </div>
     </motion.div>
   )
 }
