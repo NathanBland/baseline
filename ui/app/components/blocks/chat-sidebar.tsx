@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useNavigate } from "@remix-run/react"
 import { motion, AnimatePresence } from "motion/react"
 import { Plus, Settings, Search } from "lucide-react"
 import { Button } from "~/components/ui/button"
@@ -58,6 +59,7 @@ export function ChatSidebar({
   onCreateConversation,
   onSearchUsers
 }: ChatSidebarProps) {
+  const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState("")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isCreatingConversation, setIsCreatingConversation] = useState(false)
@@ -101,7 +103,12 @@ export function ChatSidebar({
               >
                 <Plus className="h-4 w-4" />
               </Button>
-              <Button size="sm" variant="ghost" title="Settings">
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                title="Settings"
+                onClick={() => navigate('/settings')}
+              >
                 <Settings className="h-4 w-4" />
               </Button>
             </div>
