@@ -1,7 +1,5 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:is(.dark *));
-
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -24,6 +22,19 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
+    --chart-1: oklch(0.646 0.222 41.116);
+    --chart-2: oklch(0.6 0.118 184.704);
+    --chart-3: oklch(0.398 0.07 227.392);
+    --chart-4: oklch(0.828 0.189 84.429);
+    --chart-5: oklch(0.769 0.188 70.08);
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.141 0.005 285.823);
+    --sidebar-primary: oklch(0.21 0.006 285.885);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.967 0.001 286.375);
+    --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+    --sidebar-border: oklch(0.92 0.004 286.32);
+    --sidebar-ring: oklch(0.705 0.015 286.067);
   }
 
   .dark {
@@ -46,6 +57,30 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
+  }
+
+
+  .solarized-dark {
+    /* Solarized Dark theme - Official Ethan Schoonover Solarized palette */
+    --background: 193 100% 11%; /* base03: #002b36 */
+    --foreground: 186 13% 59%; /* base0: #839496 */
+    --card: 192 89% 14%; /* base02: #073642 */
+    --card-foreground: 186 13% 59%;
+    --popover: 192 89% 14%;
+    --popover-foreground: 186 13% 59%;
+    --primary: 68 100% 30%; /* green: #859900 */
+    --primary-foreground: 193 100% 11%; /* base03 for contrast */
+    --secondary: 192 89% 14%; /* base02 */
+    --secondary-foreground: 186 13% 59%;
+    --muted: 194 25% 46%; /* base01: #586e75 */
+    --muted-foreground: 195 23% 51%; /* base00: #657b83 */
+    --accent: 205 82% 82%; /* blue: #268bd2 */
+    --accent-foreground: 193 100% 11%;
+    --destructive: 1 79% 86%; /* red: #dc322f */
+    --destructive-foreground: 193 100% 11%;
+    --border: 194 25% 46%; /* base01 */
+    --input: 192 89% 14%; /* base02 */
+    --ring: 205 82% 82%; /* blue */
   }
 }
 
@@ -163,6 +198,35 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.552 0.016 285.938);
+}
+
+.solarized-dark {
+  /* VSCode Solarized Dark theme - exact color matches */
+  --background: #002B36; /* editor.background */
+  --foreground: #839496; /* editor.foreground */
+  --card: #00212B; /* sideBar.background */
+  --card-foreground: #93A1A1; /* input.foreground */
+  --popover: #00212B; /* sideBar.background */
+  --popover-foreground: #93A1A1;
+  --primary: #2AA198; /* cyan accent - button.background without alpha */
+  --primary-foreground: #002B36; /* dark background for contrast */
+  --secondary: #004052; /* tab.inactiveBackground */
+  --secondary-foreground: #93A1A1; /* tab.inactiveForeground */
+  --muted: #003847; /* activityBar.background */
+  --muted-foreground: #93A1A1; /* statusBar.foreground */
+  --accent: #268BD2; /* blue accent */
+  --accent-foreground: #FDF6E3; /* light text */
+  --destructive: #DC322F; /* red */
+  --destructive-foreground: #FDF6E3;
+  --border: #073642; /* subtle border */
+  --input: #003847; /* input.background */
+  --ring: #2AA198; /* focus ring */
+  /* Additional VSCode-specific variables */
+  --sidebar-background: #00212B;
+  --tab-active-background: #002B37;
+  --tab-active-foreground: #D6DBDB;
+  --selection-background: #005A6F;
+  --hover-background: #004454;
 }
 
 @layer base {

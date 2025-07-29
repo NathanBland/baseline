@@ -8,6 +8,7 @@ import {
 } from "@remix-run/react";
 import type { LinksFunction, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
+import { useEffect } from "react";
 
 import "./tailwind.css";
 
@@ -50,6 +51,47 @@ export const links: LinksFunction = () => [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const data = useLoaderData<typeof loader>();
+  
+  // Apply theme globally across all pages
+  useEffect(() => {
+    const getSystemTheme = (): 'light' | 'dark' => {
+      if (typeof window !== 'undefined' && window.matchMedia) {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      }
+      return 'light'
+    }
+
+    const applyTheme = (theme: 'light' | 'dark' | 'solarized-dark' | 'system') => {
+      const html = document.documentElement
+      html.classList.remove('dark', 'solarized-dark')
+      
+      let actualTheme = theme
+      if (theme === 'system') {
+        actualTheme = getSystemTheme()
+      }
+      
+      if (actualTheme === 'dark') {
+        html.classList.add('dark')
+      } else if (actualTheme === 'solarized-dark') {
+        html.classList.add('solarized-dark')
+      }
+      
+      console.log('Applied theme globally:', actualTheme, 'from:', theme)
+    }
+
+    // Load and apply saved theme from localStorage
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'solarized-dark' | 'system' | null
+    const theme = savedTheme || 'light'
+    applyTheme(theme)
+    
+    // Listen for system theme changes if using system theme
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+      const handleChange = () => applyTheme('system')
+      mediaQuery.addEventListener('change', handleChange)
+      return () => mediaQuery.removeEventListener('change', handleChange)
+    }
+  }, [])
   
   return (
     <html lang="en">

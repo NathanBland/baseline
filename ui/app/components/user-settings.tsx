@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "motion/react"
 import { 
   Settings, 
@@ -9,6 +9,7 @@ import {
   LogOut,
   Moon,
   Sun,
+  Sunset,
   Monitor
 } from "lucide-react"
 
@@ -36,8 +37,46 @@ export function UserSettings({ user, onLogout, onUpdateProfile }: UserSettingsPr
   const [email, setEmail] = useState(user.email)
   const [notifications, setNotifications] = useState(true)
   const [soundEnabled, setSoundEnabled] = useState(true)
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system')
+  const [theme, setTheme] = useState<'light' | 'dark' | 'solarized-dark' | 'system'>('system')
   const [isLoading, setIsLoading] = useState(false)
+
+  // Initialize theme from localStorage on component mount
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'solarized-dark' | 'system' | null
+    if (savedTheme && ['light', 'dark', 'solarized-dark', 'system'].includes(savedTheme)) {
+      setTheme(savedTheme)
+      applyTheme(savedTheme)
+    } else {
+      // Default to system theme if no saved preference
+      setTheme('system')
+      applyTheme('system')
+    }
+  }, [])
+
+  const getSystemTheme = (): 'light' | 'dark' => {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    }
+    return 'light'
+  }
+
+  const applyTheme = (newTheme: 'light' | 'dark' | 'solarized-dark' | 'system') => {
+    const html = document.documentElement
+    html.classList.remove('dark', 'solarized-dark')
+    
+    let actualTheme = newTheme
+    if (newTheme === 'system') {
+      actualTheme = getSystemTheme()
+    }
+    
+    if (actualTheme === 'dark') {
+      html.classList.add('dark')
+    } else if (actualTheme === 'solarized-dark') {
+      html.classList.add('solarized-dark')
+    }
+    
+    console.log('Applied theme:', actualTheme, 'from:', newTheme)
+  }
 
   const handleSaveProfile = async () => {
     setIsLoading(true)
@@ -52,9 +91,12 @@ export function UserSettings({ user, onLogout, onUpdateProfile }: UserSettingsPr
     }
   }
 
-  const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
+  const handleThemeChange = (newTheme: 'light' | 'dark' | 'solarized-dark' | 'system') => {
     setTheme(newTheme)
-    // TODO: Implement theme switching logic
+    applyTheme(newTheme)
+    
+    // Persist theme preference
+    localStorage.setItem('theme', newTheme)
     console.log('Theme changed to:', newTheme)
   }
 
@@ -166,7 +208,16 @@ export function UserSettings({ user, onLogout, onUpdateProfile }: UserSettingsPr
         <CardContent className="space-y-4">
           <div className="space-y-3">
             <Label>Theme</Label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant={theme === 'system' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleThemeChange('system')}
+                className="flex items-center gap-2"
+              >
+                <Monitor className="h-4 w-4" />
+                System
+              </Button>
               <Button
                 variant={theme === 'light' ? 'default' : 'outline'}
                 size="sm"
@@ -186,13 +237,13 @@ export function UserSettings({ user, onLogout, onUpdateProfile }: UserSettingsPr
                 Dark
               </Button>
               <Button
-                variant={theme === 'system' ? 'default' : 'outline'}
+                variant={theme === 'solarized-dark' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => handleThemeChange('system')}
+                onClick={() => handleThemeChange('solarized-dark')}
                 className="flex items-center gap-2"
               >
-                <Monitor className="h-4 w-4" />
-                System
+                <Sunset className="h-4 w-4" />
+                Solarized
               </Button>
             </div>
           </div>

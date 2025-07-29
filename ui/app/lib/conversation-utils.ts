@@ -16,22 +16,38 @@ type ChatConversation = {
 
 /**
  * Get the display title for a conversation based on the current user context
- * For direct conversations (2 participants), shows the other participant's name
- * For group conversations, shows the actual conversation title
+ * Priority:
+ * 1. Custom title (always takes priority)
+ * 2. Auto-generated participant name (for direct chats without custom titles) 
+ * 3. Fallback to conversation title
  */
 export function getConversationDisplayTitle(conversation: ChatConversation, currentUser: ChatUser): string {
-  // For direct conversations (exactly 2 participants), show the other participant's name
+  // For direct conversations (exactly 2 participants), check if title is auto-generated
   if (conversation.participants && conversation.participants.length === 2) {
     const otherParticipant = conversation.participants.find(
       participant => participant.id !== currentUser.id
     )
 
     if (otherParticipant?.name) {
-      return otherParticipant.name
+      // Check if the conversation title appears to be auto-generated (matches participant name)
+      const participantName = otherParticipant.name
+      const title = conversation.title
+      
+      // If title exactly matches participant name or username pattern, it's likely auto-generated
+      // Show participant name for consistency
+      if (title === participantName || 
+          title === otherParticipant.name || 
+          !title || 
+          title.trim() === '') {
+        return participantName
+      }
+      
+      // If title is different from participant name, it's a custom title - show it as-is
+      return title
     }
   }
 
-  // For group conversations or any edge cases, show the actual title
+  // For group conversations or any edge cases, always show the actual title
   return conversation.title
 }
 
