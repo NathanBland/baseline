@@ -80,9 +80,48 @@ get_stack_status() {
 }
 
 # Redeploy the stack
+# Helper function to make HTTP request with timeout and timing
+make_request() {
+    local url="$1"
+    local method="$2"
+    local data="$3"
+    local output_file="$4"
+    local timeout_seconds=300  # 5 minute timeout
+    
+    local start_time=$(date +%s)
+    local http_code
+    
+    log "Starting $method request to $url (timeout: ${timeout_seconds}s)"
+    
+    # Make the request with timeout
+    http_code=$(curl -s -o "$output_file" -w "%{http_code}" \
+        --max-time $timeout_seconds \
+        --connect-timeout 30 \
+        -X "$method" \
+        -H "X-API-Key: $PORTAINER_API_KEY" \
+        -H "Content-Type: application/json" \
+        ${data:+-d "$data"} \
+        "$url" 2>/dev/null || echo "000")
+        
+    local end_time=$(date +%s)
+    local duration=$((end_time - start_time))
+    
+    log "Request completed in ${duration}s with status: $http_code"
+    
+    # Handle timeout specifically
+    if [[ "$http_code" == "000" ]]; then
+        error "❌ Request timed out after ${duration}s (max ${timeout_seconds}s)"
+        return 1
+    fi
+    
+    echo "$http_code"
+    return 0
+}
+
 redeploy_stack() {
     local endpoint_id="${PORTAINER_ENDPOINT_ID:-1}"
     local stack_url="${PORTAINER_URL}/api/stacks/${STACK_ID}/git/redeploy"
+    
     # Map environment to git branch (main for production, develop for staging)
     local git_ref="$ENVIRONMENT"
     if [[ "$ENVIRONMENT" == "production" ]]; then
@@ -94,29 +133,33 @@ redeploy_stack() {
     # Always pull the latest image and prune unused services
     local payload='{"RepositoryReferenceName": "'${git_ref}'", "PullImage": true, "Prune": true}'
     log "Using git reference: $git_ref"
-    local response
     
     log "Initiating redeployment for stack $STACK_ID..."
     log "Environment: $ENVIRONMENT"
     log "Endpoint ID: $endpoint_id"
     log "Payload: $payload"
     
-    response=$(curl -s -w "%{http_code}" -o response.json \
-        -X PUT \
-        -H "X-API-Key: $PORTAINER_API_KEY" \
-        -H "Content-Type: application/json" \
-        -d "$payload" \
-        "${stack_url}?endpointId=${endpoint_id}")
+    # Make the redeployment request
+    local response_file=$(mktemp)
+    local response_code
     
-    if [[ "$response" == "200" ]] || [[ "$response" == "202" ]]; then
+    response_code=$(make_request \
+        "${stack_url}?endpointId=${endpoint_id}" \
+        "PUT" \
+        "$payload" \
+        "$response_file")
+    
+    # Process the response
+    if [[ "$response_code" =~ ^(200|202)$ ]]; then
         log "✅ Redeployment initiated successfully"
-        rm -f response.json
+        rm -f "$response_file"
         return 0
-
     else
-        error "❌ Redeployment failed with HTTP $response"
-        cat response.json >&2
-        rm -f response.json
+        error "❌ Redeployment failed with HTTP $response_code"
+        if [[ -f "$response_file" ]]; then
+            cat "$response_file" >&2
+            rm -f "$response_file"
+        fi
         return 1
     fi
 }
