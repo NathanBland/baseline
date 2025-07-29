@@ -66,6 +66,8 @@ const app = new Elysia()
       
       console.log('CORS Request Origin:', origin)
       console.log('CORS Allowed Origins:', allowedOrigins)
+      console.log('CORS Request Method:', request.method)
+      console.log('CORS Request URL:', request.url)
       
       // Allow requests with no origin (like mobile apps or curl)
       if (!origin) {
@@ -79,10 +81,20 @@ const app = new Elysia()
       return isAllowed
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
-    exposeHeaders: ['Set-Cookie']
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With', 'Accept', 'Origin'],
+    exposeHeaders: ['Set-Cookie', 'Content-Length', 'Content-Range'],
+    maxAge: 86400 // Cache preflight for 24 hours
   }))
+  // Explicit OPTIONS handler for all routes
+  .options('*', () => {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Content-Length': '0'
+      }
+    })
+  })
   .use(swagger({
     documentation: {
       info: {
