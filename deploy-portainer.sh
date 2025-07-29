@@ -83,8 +83,17 @@ get_stack_status() {
 redeploy_stack() {
     local endpoint_id="${PORTAINER_ENDPOINT_ID:-1}"
     local stack_url="${PORTAINER_URL}/api/stacks/${STACK_ID}/git/redeploy"
+    # Map environment to git branch (main for production, develop for staging)
+    local git_ref="$ENVIRONMENT"
+    if [[ "$ENVIRONMENT" == "production" ]]; then
+        git_ref="main"
+    elif [[ "$ENVIRONMENT" == "staging" ]]; then
+        git_ref="develop"
+    fi
+    
     # Always pull the latest image and prune unused services
-    local payload='{"RepositoryReferenceName": "'${ENVIRONMENT:-main}'", "PullImage": true, "Prune": true}'
+    local payload='{"RepositoryReferenceName": "'${git_ref}'", "PullImage": true, "Prune": true}'
+    log "Using git reference: $git_ref"
     local response
     
     log "Initiating redeployment for stack $STACK_ID..."
