@@ -94,23 +94,19 @@ export abstract class AuthService {
     }
   }
 
-  static async logout(sessionId: string): Promise<{ success: boolean }> {
-    try {
-      await lucia.invalidateSession(sessionId)
-      return { success: true }
-    } catch (error) {
-      throw status(500, 'Internal server error during logout')
-    }
+  static async logout(sessionId: string): Promise<void> {
+    await lucia.invalidateSession(sessionId)
   }
 
   static async getCurrentUser(sessionId: string): Promise<AuthModel.UserProfile> {
     try {
-      const { session, user } = await lucia.validateSession(sessionId)
+      const { user } = await lucia.validateSession(sessionId)
       
-      if (!session || !user) {
+      if (!user) {
         throw status(401, 'Invalid session')
       }
 
+      // Fetch full user details from database
       const fullUser = await prisma.user.findUnique({
         where: { id: user.id }
       })
@@ -120,13 +116,14 @@ export abstract class AuthService {
       }
 
       return {
-        user: {
-          id: fullUser.id,
-          username: fullUser.username,
-          email: fullUser.email,
-          createdAt: fullUser.createdAt,
-          updatedAt: fullUser.updatedAt
-        }
+        id: fullUser.id,
+        username: fullUser.username,
+        email: fullUser.email,
+        firstName: fullUser.firstName,
+        lastName: fullUser.lastName,
+        avatar: fullUser.avatar,
+        emailVerified: fullUser.emailVerified,
+        createdAt: fullUser.createdAt
       }
     } catch (error) {
       // Re-throw ElysiaJS status errors
@@ -145,5 +142,73 @@ export abstract class AuthService {
     } catch (error) {
       return null
     }
+  }
+
+  static async createOrUpdateUserFromOIDC(userInfo: any): Promise<AuthModel.UserProfile> {
+    const { sub, email, name, preferred_username, given_name, family_name, picture } = userInfo
+
+    if (!email) {
+      throw status(400, 'Email is required from OIDC provider')
+    }
+
+    // Generate username from email or preferred username
+    const username = preferred_username || email.split('@')[0]
+    
+    // Split full name into first and last names if no given_name/family_name provided
+    const fullName = name || ''
+    const [derivedFirstName = '', ...rest] = fullName.split(' ')
+    const derivedLastName = rest.join(' ') || null
+
+    // Use OIDC claims for names, fallback to parsed full name
+    const finalFirstName = given_name || derivedFirstName
+    const finalLastName = family_name || derivedLastName
+
+    // Check if user already exists to preserve their password
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    })
+
+    // Create or update user based on OIDC email
+    const user = await prisma.user.upsert({
+      where: { 
+        email 
+      },
+      update: {
+        username,
+        firstName: finalFirstName,
+        lastName: finalLastName,
+        avatar: picture,
+        emailVerified: true,
+        updatedAt: new Date()
+        // Note: We deliberately do NOT update hashedPassword for existing users
+        // This preserves their existing password when linking OIDC accounts
+      },
+      create: {
+        username,
+        email,
+        firstName: finalFirstName,
+        lastName: finalLastName,
+        avatar: picture,
+        emailVerified: true,
+        // Set a random password since this is OIDC auth for new users
+        hashedPassword: await bcrypt.hash(globalThis.crypto.randomUUID(), 10)
+      }
+    })
+
+    return {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatar: user.avatar,
+      emailVerified: user.emailVerified,
+      createdAt: user.createdAt
+    }
+  }
+
+  static async createSession(userId: string): Promise<string> {
+    const session = await lucia.createSession(userId, {})
+    return session.id
   }
 }

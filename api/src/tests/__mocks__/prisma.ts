@@ -63,11 +63,11 @@ export const mockSession = {
   updatedAt: new Date('2024-01-01')
 }
 
-// Track created entities for proper BDD test isolation
-const createdConversations: any[] = []
-const createdMessages: any[] = []
-const createdUsers: any[] = []
-const createdParticipants: any[] = []
+// Arrays to track created entities for BDD test isolation
+let createdUsers: any[] = []
+let createdConversations: any[] = []
+let createdMessages: any[] = []
+let createdParticipants: any[] = []
 
 // Reset function to clear tracked state between tests (critical for BDD test isolation)
 export const resetMockState = () => {
@@ -335,68 +335,34 @@ export const mockPrisma = {
     },
     findUnique: async () => mockConversation.participants[0],
     findFirst: async (query: any) => {
-      // Handle authorization query for MessageService: { where: { conversationId, userId } }
       const { where } = query || {}
-      
       if (where && where.conversationId && where.userId) {
-        // FIRST: Check tracked participants array (critical for BDD test isolation)
-        const trackedParticipant = createdParticipants.find(p => {
-          const matchesConversation = p.conversationId === where.conversationId
-          const matchesUser = p.userId === where.userId
-          // Handle both simple role matching and Prisma 'in' operator
-          let matchesRole = true
-          if (where.role) {
-            if (where.role.in && Array.isArray(where.role.in)) {
-              matchesRole = where.role.in.includes(p.role)
-            } else {
-              matchesRole = p.role === where.role
-            }
-          }
-          return matchesConversation && matchesUser && matchesRole
-        })
-        if (trackedParticipant) {
-          return trackedParticipant
-        }
-        
-        // SECOND: Check tracked conversations for participants (created by createTestConversation)
-        for (const trackedConv of createdConversations) {
-          if (trackedConv.id === where.conversationId) {
-            const participant = trackedConv.participants.find((p: any) => {
-              const matchesUser = p.userId === where.userId
-              // Handle both simple role matching and Prisma 'in' operator
-              let matchesRole = true
-              if (where.role) {
-                if (where.role.in && Array.isArray(where.role.in)) {
-                  matchesRole = where.role.in.includes(p.role)
-                } else {
-                  matchesRole = p.role === where.role
-                }
-              }
-              return matchesUser && matchesRole
-            })
-            if (participant) {
-              return participant
-            }
+        // Check createdParticipants array first
+        const participant = createdParticipants.find(p => 
+          p.conversationId === where.conversationId && 
+          p.userId === where.userId &&
+          (!where.role || (where.role.in ? where.role.in.includes(p.role) : p.role === where.role))
+        )
+        if (participant) return participant
+
+        // Check participants inside createdConversations
+        for (const conversation of createdConversations) {
+          if (conversation.id === where.conversationId) {
+            const participant = conversation.participants?.find(p => 
+              p.userId === where.userId &&
+              (!where.role || (where.role.in ? where.role.in.includes(p.role) : p.role === where.role))
+            )
+            if (participant) return participant
           }
         }
-        
-        // THIRD: Fallback to static mock conversation
+
+        // Check fallback static mockConversation participants
         if (mockConversation.id === where.conversationId) {
-          const participant = mockConversation.participants.find((p: any) => {
-            const matchesUser = p.userId === where.userId
-            let matchesRole = true
-            if (where.role) {
-              if (where.role.in && Array.isArray(where.role.in)) {
-                matchesRole = where.role.in.includes(p.role)
-              } else {
-                matchesRole = p.role === where.role
-              }
-            }
-            return matchesUser && matchesRole
-          })
-          if (participant) {
-            return participant
-          }
+          const participant = mockConversation.participants?.find(p => 
+            p.userId === where.userId &&
+            (!where.role || (where.role.in ? where.role.in.includes(p.role) : p.role === where.role))
+          )
+          if (participant) return participant
         }
       }
       
@@ -406,7 +372,17 @@ export const mockPrisma = {
     findMany: async () => mockConversation.participants,
     update: async () => mockConversation.participants[0],
     delete: async () => mockConversation.participants[0],
-    deleteMany: async () => ({ count: 1 })
+    deleteMany: async () => ({ count: 1 }),
+    createMany: async ({ data }: { data: any[] }) => {
+      // Track created participants for BDD compliance
+      const participants = data.map((participantData, index) => ({
+        id: `participant-${Date.now()}-${index}`,
+        ...participantData,
+        joinedAt: new Date()
+      }))
+      createdParticipants.push(...participants)
+      return { count: participants.length }
+    }
   },
   message: {
     create: async ({ data }: { data: any }) => {

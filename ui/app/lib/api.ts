@@ -241,6 +241,23 @@ class ApiService {
     }
   }
 
+  async getAuthToken(): Promise<{ token: string; user: User }> {
+    const response = await this.request<{ token: string; user: User }>('/auth/token', {
+      method: 'GET',
+    })
+    
+    console.log('Auth token response:', response)
+    
+    if (typeof window !== 'undefined' && response.token) {
+      console.log('Storing OIDC token in localStorage:', response.token)
+      localStorage.setItem('auth_token', response.token)
+      localStorage.setItem('current_user', JSON.stringify(response.user))
+    }
+    
+    this.currentUser = response.user
+    return response
+  }
+
   // Conversation methods
   async getConversations(): Promise<Conversation[]> {
     if (!this.currentUser) {

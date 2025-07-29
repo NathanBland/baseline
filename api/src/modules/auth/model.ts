@@ -41,13 +41,14 @@ export namespace AuthModel {
 
   // User profile model
   export const userProfile = t.Object({
-    user: t.Object({
-      id: t.String(),
-      username: t.String(),
-      email: t.String(),
-      createdAt: t.Date(),
-      updatedAt: t.Date()
-    })
+    id: t.String(),
+    username: t.String(),
+    email: t.String(),
+    firstName: t.Optional(t.Union([t.String(), t.Null()])),
+    lastName: t.Optional(t.Union([t.String(), t.Null()])),
+    avatar: t.Optional(t.Union([t.String(), t.Null()])),
+    emailVerified: t.Boolean(),
+    createdAt: t.Date()
   })
   export type UserProfile = typeof userProfile.static
 

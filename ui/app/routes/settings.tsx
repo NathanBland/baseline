@@ -99,11 +99,12 @@ export default function SettingsPage() {
 
   const handleLogout = async () => {
     try {
+      // Call logout API if available
+      const token = localStorage.getItem('auth_token')
+      
       // Clear authentication token
       localStorage.removeItem('auth_token')
       
-      // Call logout API if available
-      const token = localStorage.getItem('auth_token')
       if (token) {
         await fetch(`${(window as any).ENV?.API_BASE_URL || 'http://localhost:3000'}/auth/logout`, {
           method: 'POST',

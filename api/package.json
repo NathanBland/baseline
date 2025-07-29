@@ -27,6 +27,7 @@
     "bcryptjs": "^3.0.2",
     "elysia": "latest",
     "ioredis": "^5.6.1",
+    "jose": "^6.0.12",
     "lucia": "^3.2.2",
     "prisma": "^6.12.0"
   },

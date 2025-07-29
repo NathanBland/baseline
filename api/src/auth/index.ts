@@ -44,6 +44,19 @@ export const google = process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_
     )
   : null
 
+// Generic OIDC provider (KeyCloak or any OIDC-compliant provider)
+export const oidc = process.env.OIDC_CLIENT_ID && process.env.OIDC_CLIENT_SECRET && process.env.OIDC_ISSUER_URL
+  ? {
+      clientId: process.env.OIDC_CLIENT_ID,
+      clientSecret: process.env.OIDC_CLIENT_SECRET,
+      issuerUrl: process.env.OIDC_ISSUER_URL,
+      redirectUri: process.env.OIDC_REDIRECT_URI || 'http://localhost:3000/auth/oidc/callback',
+      authorizationEndpoint: `${process.env.OIDC_ISSUER_URL}/protocol/openid-connect/auth`,
+      tokenEndpoint: `${process.env.OIDC_ISSUER_URL}/protocol/openid-connect/token`,
+      userInfoEndpoint: `${process.env.OIDC_ISSUER_URL}/protocol/openid-connect/userinfo`
+    }
+  : null
+
 // Password utilities
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 12)

@@ -135,8 +135,45 @@ export default function ChatPage() {
     }))
   }, [unreadCounts])
   
+  // Authentication guard and OIDC token fetch - runs first
+  useEffect(() => {
+    const checkAuthAndFetchToken = async () => {
+      try {
+        // First, try to get current user (this checks if we have a valid session)
+        const user = await apiService.getCurrentUser()
+        setCurrentUser(user)
+        
+        // If we have a session but no token in localStorage, fetch it
+        // This handles OIDC redirects where we have a session cookie but need a WebSocket token
+        const existingToken = localStorage.getItem('auth_token')
+        if (!existingToken) {
+          console.log('🔑 No WebSocket token found, fetching from API...')
+          try {
+            const { token } = await apiService.getAuthToken()
+            localStorage.setItem('auth_token', token)
+            console.log('✅ Successfully fetched WebSocket token after OIDC login')
+          } catch (tokenError) {
+            console.warn('⚠️ Failed to fetch WebSocket token:', tokenError)
+            // Continue anyway - user is authenticated via session
+          }
+        }
+        
+      } catch (error) {
+        console.error('❌ Authentication failed:', error)
+        // Redirect to login if not authenticated
+        navigate('/login')
+        return
+      }
+    }
+    
+    checkAuthAndFetchToken()
+  }, [])
+
   // Handle initial conversation loading from URL parameter
   useEffect(() => {
+    // Don't load conversations until we have a current user
+    if (!currentUser) return
+    
     const conversationIdFromUrl = searchParams.get('c')
     
     // Skip URL sync if we're in the middle of a programmatic URL update
@@ -165,13 +202,28 @@ export default function ChatPage() {
 
   // Prevent React StrictMode double execution in development
   const initRef = useRef(false)
+  // Track if we've successfully initialized to prevent re-initialization
+  const hasInitializedRef = useRef(false)
   // Prevent race condition between manual conversation selection and URL sync
   const isUpdatingUrlRef = useRef(false)
   
-  // Initialize user and data on mount
+  // Initialize user and data when currentUser becomes available
   useEffect(() => {
-    // Guard against React StrictMode double execution
-    if (initRef.current) return
+    // Guard against React StrictMode double execution in development
+    if (initRef.current && !currentUser) return
+    
+    // If we don't have a user yet, wait for authentication to complete
+    if (!currentUser) {
+      console.log('⏳ Waiting for authentication...')
+      return
+    }
+    
+    // Prevent re-initialization if already completed successfully
+    if (hasInitializedRef.current) {
+      console.log('✅ Chat already initialized, skipping')
+      return
+    }
+    
     initRef.current = true
     
     let unsubscribeFailure: (() => void) | null = null
@@ -183,9 +235,9 @@ export default function ChatPage() {
       try {
         setError(null)
         
-        // Check if user is authenticated
-        const user = await apiService.getCurrentUser()
-        setCurrentUser(user)
+        // Mark as successfully initialized to prevent re-runs
+        hasInitializedRef.current = true
+        console.log('🚀 Initializing chat with authenticated user:', currentUser.username)
         
         // Get user conversations with offline handling
         try {
@@ -202,7 +254,7 @@ export default function ChatPage() {
             // If conversation has messages and was recently updated, assume some unread
             const hasRecentActivity = (conv.messages?.length ?? 0) > 0
             const lastMessage = conv.messages?.[0]
-            const isOwnMessage = lastMessage?.author?.id === user.id
+            const isOwnMessage = lastMessage?.author?.id === currentUser.id
             
             // Don't mark own messages as unread
             if (hasRecentActivity && !isOwnMessage) {
@@ -428,7 +480,7 @@ export default function ChatPage() {
         unsubscribeFailure()
       }
     }
-  }, [])
+  }, [currentUser]) // Re-run when currentUser becomes available
 
   const handleConversationSelect = async (conversationId: string) => {
     console.log('🔄 handleConversationSelect called with:', conversationId, 'current active:', activeConversationId)
