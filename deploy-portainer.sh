@@ -79,14 +79,13 @@ get_stack_status() {
     echo "$status"
 }
 
-# Redeploy the stack
 # Helper function to make HTTP request with timeout and timing
 make_request() {
     local url="$1"
-    local method="$2"
+    local method="${2:-GET}"
     local data="$3"
     local output_file="$4"
-    local timeout_seconds=300  # 5 minute timeout
+    local timeout_seconds=600  # 10 minute timeout for long-running operations
     
     local start_time=$(date +%s)
     local http_code
@@ -118,44 +117,69 @@ make_request() {
     return 0
 }
 
-redeploy_stack() {
-    local endpoint_id="${PORTAINER_ENDPOINT_ID:-1}"
-    local stack_url="${PORTAINER_URL}/api/stacks/${STACK_ID}/git/redeploy"
+# Get stack webhook URL
+get_webhook_url() {
+    local stack_id="$1"
+    local response_file=$(mktemp)
     
-    # Map environment to git branch (main for production, develop for staging)
-    local git_ref="$ENVIRONMENT"
-    if [[ "$ENVIRONMENT" == "production" ]]; then
-        git_ref="main"
-    elif [[ "$ENVIRONMENT" == "staging" ]]; then
-        git_ref="develop"
+    log "Fetching webhook URL for stack $stack_id"
+    
+    local http_code=$(make_request \
+        "${PORTAINER_URL}/api/stacks/${stack_id}/webhooks" \
+        "GET" \
+        "" \
+        "$response_file")
+    
+    if [[ "$http_code" == "200" ]]; then
+        local webhook_url=$(jq -r '.[0].ResourceURL' "$response_file" 2>/dev/null)
+        rm -f "$response_file"
+        
+        if [[ -n "$webhook_url" && "$webhook_url" != "null" ]]; then
+            log "Found webhook URL: $webhook_url"
+            echo "$webhook_url"
+            return 0
+        fi
     fi
     
-    # Always pull the latest image and prune unused services
-    local payload='{"RepositoryReferenceName": "'${git_ref}'", "PullImage": true, "Prune": true}'
-    log "Using git reference: $git_ref"
+    error "❌ Failed to get webhook URL for stack $stack_id"
+    if [[ -f "$response_file" ]]; then
+        cat "$response_file" >&2
+        rm -f "$response_file"
+    fi
+    return 1
+}
+
+# Redeploy the stack using webhook
+redeploy_stack() {
+    local endpoint_id="${PORTAINER_ENDPOINT_ID:-1}"
+    local webhook_url
     
-    log "Initiating redeployment for stack $STACK_ID..."
-    log "Environment: $ENVIRONMENT"
-    log "Endpoint ID: $endpoint_id"
-    log "Payload: $payload"
+    # Get the webhook URL for the stack
+    webhook_url=$(get_webhook_url "$STACK_ID") || return 1
     
-    # Make the redeployment request
+    # Trigger the webhook
+    log "Triggering webhook for stack $STACK_ID..."
+    log "Webhook URL: $webhook_url"
+    
     local response_file=$(mktemp)
     local response_code
     
+    # Trigger the webhook with a POST request
     response_code=$(make_request \
-        "${stack_url}?endpointId=${endpoint_id}" \
-        "PUT" \
-        "$payload" \
+        "$webhook_url" \
+        "POST" \
+        "" \
         "$response_file")
     
     # Process the response
-    if [[ "$response_code" =~ ^(200|202)$ ]]; then
-        log "✅ Redeployment initiated successfully"
+    if [[ "$response_code" == "204" ]]; then
+        log "✅ Webhook triggered successfully (HTTP 204)"
+        log "Redeployment started. This may take several minutes to complete."
+        log "You can check the status in the Portainer UI."
         rm -f "$response_file"
         return 0
     else
-        error "❌ Redeployment failed with HTTP $response_code"
+        error "❌ Failed to trigger webhook with HTTP $response_code"
         if [[ -f "$response_file" ]]; then
             cat "$response_file" >&2
             rm -f "$response_file"
