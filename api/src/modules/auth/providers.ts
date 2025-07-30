@@ -30,7 +30,7 @@ export const providersModule = new Elysia()
         id: 'oidc',
         name: 'OpenID Connect',
         type: 'oidc',
-        authorizationUrl: `${Bun.env.OIDC_ROOT_URL}/auth/oidc` || 'http://localhost:3000/auth/oidc',
+        authorizationUrl: process.env.OIDC_ROOT_URL && `${process.env.OIDC_ROOT_URL}/auth/oidc` || 'http://localhost:3000/auth/oidc',
         callbackUrl: oidc.redirectUri
       })
     }
