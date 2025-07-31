@@ -158,4 +158,4 @@ health: ## Check health of all services
 	@echo "\nAPI Health:"
 	@curl -f http://localhost:3001/health || echo "API not responding"
 	@echo "\nUI Health:"
-	@curl -f http://localhost:3000 || echo "UI not responding"
+	@curl -f http://localhost:5173 || echo "UI not responding"

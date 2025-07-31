@@ -34,7 +34,7 @@ services:
       - baseline-network
 
   api:
-    image: registry.aqueous.network/baseline-api:${IMAGE_TAG:-latest}
+    image: registry.aqueous.network/baseline-api:${API_IMAGE_TAG:-latest}
     container_name: baseline-api
     environment:
       NODE_ENV: production
@@ -71,7 +71,7 @@ services:
       retries: 3
 
   ui:
-    image: registry.aqueous.network/baseline-ui:${IMAGE_TAG:-latest}
+    image: registry.aqueous.network/baseline-ui:${UI_IMAGE_TAG:-latest}
     container_name: baseline-ui
     # build:
     #   context: ./ui
@@ -84,7 +84,7 @@ services:
       APP_NAME: ${APP_NAME:-Baseline}
       APP_VERSION: ${APP_VERSION:-1.0.0}
     ports:
-      - "${UI_PORT:-3000}:3000"
+      - "${UI_PORT:-3001}:3001"
     depends_on:
       - api
     restart: unless-stopped

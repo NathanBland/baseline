@@ -10,6 +10,9 @@ PORTAINER_URL="${PORTAINER_URL:-https://port.aqueous.network}"
 PORTAINER_API_KEY="${PORTAINER_API_KEY:-}"
 STACK_ID="${1:-}"
 ENVIRONMENT="${2:-production}"
+# Optional: API and UI image tags
+API_IMAGE_TAG="${3:-latest}"
+UI_IMAGE_TAG="${4:-$API_IMAGE_TAG}"  # Default to API_IMAGE_TAG if not specified
 
 # Colors for output
 RED='\033[0;31m'
@@ -117,49 +120,45 @@ make_request() {
     return 0
 }
 
-# Get stack webhook URL
-get_webhook_url() {
-    local stack_id="$1"
-    local response_file=$(mktemp)
-    
-    log "Fetching webhook URL for stack $stack_id"
-    
-    local http_code=$(make_request \
-        "${PORTAINER_URL}/api/stacks/${stack_id}/webhooks" \
-        "GET" \
-        "" \
-        "$response_file")
-    
-    if [[ "$http_code" == "200" ]]; then
-        local webhook_url=$(jq -r '.[0].ResourceURL' "$response_file" 2>/dev/null)
-        rm -f "$response_file"
-        
-        if [[ -n "$webhook_url" && "$webhook_url" != "null" ]]; then
-            log "Found webhook URL: $webhook_url"
-            echo "$webhook_url"
-            return 0
-        fi
-    fi
-    
-    error "❌ Failed to get webhook URL for stack $stack_id"
-    if [[ -f "$response_file" ]]; then
-        cat "$response_file" >&2
-        rm -f "$response_file"
-    fi
-    return 1
+# Hardcoded webhook URL from user
+WEBHOOK_URL="https://port.aqueous.network/api/stacks/webhooks/ff1d8219-1fbf-43e3-a3c4-d19adb4769a6"
+
+# URL encode a string
+urlencode() {
+    jq -rn --arg x "$1" '$x | @uri'
 }
 
-# Redeploy the stack using webhook
+# Redeploy the stack using the provided webhook
 redeploy_stack() {
     local endpoint_id="${PORTAINER_ENDPOINT_ID:-1}"
-    local webhook_url
+    local webhook_url="$WEBHOOK_URL"
     
-    # Get the webhook URL for the stack
-    webhook_url=$(get_webhook_url "$STACK_ID") || return 1
+    # Build query parameters
+    local params=()
     
-    # Trigger the webhook
-    log "Triggering webhook for stack $STACK_ID..."
-    log "Webhook URL: $webhook_url"
+    # Add API_IMAGE_TAG if provided
+    if [[ -n "$API_IMAGE_TAG" && "$API_IMAGE_TAG" != "latest" ]]; then
+        local encoded_tag=$(urlencode "$API_IMAGE_TAG")
+        params+=("API_IMAGE_TAG=$encoded_tag")
+    fi
+    
+    # Add UI_IMAGE_TAG if different from API_IMAGE_TAG
+    if [[ -n "$UI_IMAGE_TAG" && "$UI_IMAGE_TAG" != "$API_IMAGE_TAG" ]]; then
+        local encoded_tag=$(urlencode "$UI_IMAGE_TAG")
+        params+=("UI_IMAGE_TAG=$encoded_tag")
+    fi
+    
+    # Add parameters to webhook URL if any
+    if [[ ${#params[@]} -gt 0 ]]; then
+        webhook_url="${webhook_url}?${params[0]}"
+        for ((i=1; i<${#params[@]}; i++)); do
+            webhook_url="${webhook_url}&${params[$i]}"
+        done
+        log "Using webhook URL with parameters: $webhook_url"
+    fi
+    
+    log "Triggering webhook for stack redeployment..."
+    log "Webhook URL: ${webhook_url}"
     
     local response_file=$(mktemp)
     local response_code
@@ -225,6 +224,8 @@ wait_for_deployment() {
 main() {
     log "Starting Portainer deployment script..."
     log "Environment: $ENVIRONMENT"
+    log "API Image Tag: $API_IMAGE_TAG"
+    log "UI Image Tag: $UI_IMAGE_TAG"
     
     validate_env
     
