@@ -168,25 +168,27 @@ redeploy_stack() {
     local response_code
     
     # Trigger the webhook with a POST request
-    response_code=$(make_request \
-        "$webhook_url" \
-        "POST" \
-        "" \
-        )
+    response_file=$(mktemp)
+    response_code=$(make_request "$webhook_url" "POST" "" "$response_file")
     
     # Process the response
-    case "$response_code" in
-        "0")
-            log "✅ Webhook triggered successfully (HTTP $response_code)"
-            log "Redeployment started. This may take several minutes to complete."
-            log "You can check the status in the Portainer UI."
-            return 0
-            ;;
-        *)
-            error "❌ Failed to trigger webhook with HTTP $response_code"
-            return 1
-            ;;
-    esac
+    local status=$?
+    
+    if [[ $status -eq 0 && ("$response_code" == "204" || "$response_code" == "200") ]]; then
+        log "✅ Webhook triggered successfully (HTTP $response_code)"
+        log "Redeployment started. This may take several minutes to complete."
+        log "You can check the status in the Portainer UI."
+        rm -f "$response_file" 2>/dev/null || true
+        return 0
+    else
+        error "❌ Failed to trigger webhook with HTTP ${response_code:-unknown}"
+        if [[ -f "$response_file" ]]; then
+            error "Response body:"
+            cat "$response_file" >&2
+            rm -f "$response_file"
+        fi
+        return 1
+    fi
 }
 
 # Wait for deployment to complete
