@@ -171,7 +171,7 @@ redeploy_stack() {
         "$response_file")
     
     # Process the response
-    if [[ "$response_code" == "204" || "$response_code" == "200" ]]; then
+    if [[ "$response_code" == 204 || "$response_code" == "204" || "$response_code" == "200" ]]; then
         log "✅ Webhook triggered successfully (HTTP $response_code)"
         log "Redeployment started. This may take several minutes to complete."
         log "You can check the status in the Portainer UI."
