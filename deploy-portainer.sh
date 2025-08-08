@@ -78,7 +78,7 @@ get_stack_status() {
         -H "X-API-Key: $PORTAINER_API_KEY" \
         "$stack_url" | jq -r '.Status // "unknown"')
     
-    log "Current stack status: $status"
+    log "Current stack status: $status" >&2
     echo "$status"
 }
 
@@ -93,7 +93,7 @@ make_request() {
     local start_time=$(date +%s)
     local http_code
     
-    log "Starting $method request to $url (timeout: ${timeout_seconds}s)"
+    log "Starting $method request to $url (timeout: ${timeout_seconds}s)" >&2
     
     # Make the request with timeout
     http_code=$(curl -s -o "$output_file" -w "%{http_code}" \
@@ -108,7 +108,7 @@ make_request() {
     local end_time=$(date +%s)
     local duration=$((end_time - start_time))
     
-    log "Request completed in ${duration}s with status: $http_code"
+    log "Request completed in ${duration}s with status: $http_code" >&2
     
     # Handle timeout specifically
     if [[ "$http_code" == "000" ]]; then
@@ -117,9 +117,6 @@ make_request() {
     fi
     
     # Only return the status code
-    if [[ "$http_code" == "000" ]]; then
-        return 1
-    fi
     echo -n "$http_code"  # -n to avoid newline
     return 0
 }
@@ -168,13 +165,12 @@ redeploy_stack() {
     local response_code
     
     # Trigger the webhook with a POST request
-    response_file=$(mktemp)
     response_code=$(make_request "$webhook_url" "POST" "" "$response_file")
     
     # Process the response
     local status=$?
     
-    if [[ $status -eq 0 && ("$response_code" == "204" || "$response_code" == "200") ]]; then
+    if [[ $status -eq 0 && $response_code =~ ^2[0-9][0-9]$ ]]; then
         log "✅ Webhook triggered successfully (HTTP $response_code)"
         log "Redeployment started. This may take several minutes to complete."
         log "You can check the status in the Portainer UI."
