@@ -13,7 +13,9 @@ import { useEffect } from "react";
 import "./tailwind.css";
 
 // Environment variables for the client
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request: _request }: LoaderFunctionArgs) {
+  // Explicitly mark the request as used to satisfy linting
+  void _request;
   // Log environment variables for debugging (always log for now)
   console.log('🔍 [REMIX-ENV] Root loader environment variables:', {
     'process.env.API_URL': process.env.API_URL,

@@ -2,6 +2,7 @@ import { status } from 'elysia'
 import bcrypt from 'bcryptjs'
 import { prisma } from '../../db'
 import { lucia } from '../../auth'
+import { JwtService } from '../../auth/jwt'
 import type { AuthModel } from './model'
 
 export abstract class AuthService {
@@ -31,6 +32,12 @@ export abstract class AuthService {
       // Create session
       const session = await lucia.createSession(user.id, {})
 
+      // Generate JWT tokens
+      const [accessToken, refreshToken] = await Promise.all([
+        JwtService.generateToken(user.id, session.id, 'access'),
+        JwtService.generateToken(user.id, session.id, 'refresh')
+      ])
+
       return {
         user: {
           id: user.id,
@@ -39,7 +46,8 @@ export abstract class AuthService {
           createdAt: user.createdAt
         },
         sessionId: session.id,
-        token: session.id
+        token: accessToken,
+        refreshToken
       }
     } catch (error) {
       // Re-throw ElysiaJS status errors (they have code and response properties)
@@ -75,6 +83,12 @@ export abstract class AuthService {
       // Create session
       const session = await lucia.createSession(user.id, {})
 
+      // Generate JWT tokens
+      const [accessToken, refreshToken] = await Promise.all([
+        JwtService.generateToken(user.id, session.id, 'access'),
+        JwtService.generateToken(user.id, session.id, 'refresh')
+      ])
+
       return {
         user: {
           id: user.id,
@@ -82,7 +96,8 @@ export abstract class AuthService {
           email: user.email
         },
         sessionId: session.id,
-        token: session.id
+        token: accessToken,
+        refreshToken
       }
     } catch (error) {
       // Re-throw ElysiaJS status errors

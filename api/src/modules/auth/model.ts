@@ -17,7 +17,8 @@ export namespace AuthModel {
       createdAt: t.Date()
     }),
     sessionId: t.String(),
-    token: t.String()
+    token: t.String(),
+    refreshToken: t.String()
   })
   export type RegisterResponse = typeof registerResponse.static
 
@@ -35,7 +36,8 @@ export namespace AuthModel {
       email: t.String()
     }),
     sessionId: t.String(),
-    token: t.String()
+    token: t.String(),
+    refreshToken: t.String()
   })
   export type LoginResponse = typeof loginResponse.static
 

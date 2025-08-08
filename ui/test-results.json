@@ -46,7 +46,7 @@
         "testMatch": [
           "**/*.@(spec|test).?(c|m)[jt]s?(x)"
         ],
-        "timeout": 30000
+        "timeout": 120000
       }
     ],
     "shard": null,
@@ -67,11 +67,11 @@
         {
           "title": "Complete User Flow",
           "file": "user-flow.spec.ts",
-          "line": 210,
+          "line": 359,
           "column": 6,
           "specs": [
             {
-              "title": "Create conversation with another user",
+              "title": "Complete user journey: sign-up → chat → sign-out → sign-in → chat more",
               "ok": false,
               "tags": [],
               "tests": [
@@ -85,89 +85,263 @@
                     {
                       "workerIndex": 0,
                       "parallelIndex": 0,
-                      "status": "timedOut",
-                      "duration": 123084,
+                      "status": "failed",
+                      "duration": 2600,
                       "error": {
-                        "message": "\u001b[31mTest timeout of 120000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 120000ms exceeded.\u001b[39m"
+                        "message": "Error: page.fill: value: expected string, got object",
+                        "stack": "Error: page.fill: value: expected string, got object\n    at signUp (/home/nathan/projects/baseline/ui/tests/e2e/user-flow.spec.ts:58:14)\n    at /home/nathan/projects/baseline/ui/tests/e2e/user-flow.spec.ts:398:5",
+                        "location": {
+                          "file": "/home/nathan/projects/baseline/ui/tests/e2e/user-flow.spec.ts",
+                          "column": 14,
+                          "line": 58
+                        },
+                        "snippet": "  56 |   // Fill in the registration form\n  57 |   console.log('  ↳ Filling in registration form...');\n> 58 |   await page.fill('input[name=\"email\"]', email);\n     |              ^\n  59 |   await page.fill('input[name=\"password\"]', password);\n  60 |   await page.fill('input[name=\"confirmPassword\"]', password);\n  61 |   await page.fill('input[name=\"name\"]', username);"
                       },
                       "errors": [
                         {
-                          "message": "\u001b[31mTest timeout of 120000ms exceeded.\u001b[39m"
-                        },
-                        {
                           "location": {
                             "file": "/home/nathan/projects/baseline/ui/tests/e2e/user-flow.spec.ts",
-                            "column": 21,
-                            "line": 449
+                            "column": 14,
+                            "line": 58
                           },
-                          "message": "Error: page.click: Target page, context or browser has been closed\n\n  447 |       await page.click('button:has([data-testid=\"plus-icon\"]), button:has-text(\"New Conversation\"), button[aria-label*=\"create\"], button[aria-label*=\"new\"]').catch(() => {\n  448 |         // Fallback: try to find any button that might open the dialog\n> 449 |         return page.click('button:has(svg)');\n      |                     ^\n  450 |       });\n  451 |       \n  452 |       // Wait for create conversation dialog to appear\n    at /home/nathan/projects/baseline/ui/tests/e2e/user-flow.spec.ts:449:21\n    at /home/nathan/projects/baseline/ui/tests/e2e/user-flow.spec.ts:447:7"
+                          "message": "Error: page.fill: value: expected string, got object\n\n  56 |   // Fill in the registration form\n  57 |   console.log('  ↳ Filling in registration form...');\n> 58 |   await page.fill('input[name=\"email\"]', email);\n     |              ^\n  59 |   await page.fill('input[name=\"password\"]', password);\n  60 |   await page.fill('input[name=\"confirmPassword\"]', password);\n  61 |   await page.fill('input[name=\"name\"]', username);\n    at signUp (/home/nathan/projects/baseline/ui/tests/e2e/user-flow.spec.ts:58:14)\n    at /home/nathan/projects/baseline/ui/tests/e2e/user-flow.spec.ts:398:5"
                         }
                       ],
                       "stdout": [
                         {
-                          "text": "👥 Starting create conversation test...\n\n"
+                          "text": "🚀 Starting complete user journey test...\n\n"
                         },
                         {
-                          "text": "📋 User 1 signing up...\n"
+                          "text": "📋 Step 1: User sign-up\n"
                         },
                         {
-                          "text": "📝 Signing up user: convuser11753733311389i8ntbxxok\n"
+                          "text": "\n📝 Starting sign up process for [object Object]...\n"
                         },
                         {
-                          "text": "✅ User signed up successfully\n"
+                          "text": "  ↳ Waiting for sign-up form...\n"
                         },
                         {
-                          "text": "📋 User 2 signing up...\n"
+                          "text": "[Request] GET http://localhost:3000/auth/providers\n"
                         },
                         {
-                          "text": "📝 Signing up user: convuser21753733311389i8ntbxxok\n"
+                          "text": "[Browser Console log] Applied theme globally: light from: light\n"
                         },
                         {
-                          "text": "✅ User signed up successfully\n"
+                          "text": "[Request] GET http://localhost:3000/auth/providers\n"
                         },
                         {
-                          "text": "📋 User 1 creating conversation...\n"
+                          "text": "[Browser Console log] Applied theme globally: light from: light\n"
+                        },
+                        {
+                          "text": "[Response 200] http://localhost:3000/auth/providers\n"
+                        },
+                        {
+                          "text": "[Response 200] http://localhost:3000/auth/providers\n"
+                        },
+                        {
+                          "text": "  ↳ Clicking \"Sign up\" link...\n"
+                        },
+                        {
+                          "text": "[Browser Console verbose] [DOM] Input elements should have autocomplete attributes (suggested: \"current-password\"): (More info: https://goo.gl/9p2vKq) %o\n"
+                        },
+                        {
+                          "text": "  ↳ Filling in registration form...\n"
                         }
                       ],
                       "stderr": [
                         {
-                          "text": "❌ Create conversation test failed: page.click: Target page, context or browser has been closed\n    at \u001b[90m/home/nathan/projects/baseline/ui/\u001b[39mtests/e2e/user-flow.spec.ts:449:21\n    at \u001b[90m/home/nathan/projects/baseline/ui/\u001b[39mtests/e2e/user-flow.spec.ts:447:7 {\n  [\u001b[32mSymbol(step)\u001b[39m]: {\n    stepId: \u001b[32m'pw:api@44'\u001b[39m,\n    location: {\n      file: \u001b[32m'/home/nathan/projects/baseline/ui/tests/e2e/user-flow.spec.ts'\u001b[39m,\n      line: \u001b[33m449\u001b[39m,\n      column: \u001b[33m21\u001b[39m\n    },\n    category: \u001b[32m'pw:api'\u001b[39m,\n    title: \u001b[32m\"Click locator('button:has(svg)')\"\u001b[39m,\n    apiName: \u001b[32m'page.click'\u001b[39m,\n    params: { selector: \u001b[32m'button:has(svg)'\u001b[39m, timeout: \u001b[33m0\u001b[39m },\n    boxedStack: \u001b[90mundefined\u001b[39m,\n    steps: [],\n    attachmentIndices: [],\n    info: TestStepInfoImpl {\n      annotations: [],\n      _testInfo: \u001b[36m[TestInfoImpl]\u001b[39m,\n      _stepId: \u001b[32m'pw:api@44'\u001b[39m,\n      skip: \u001b[36m[Function (anonymous)]\u001b[39m\n    },\n    complete: \u001b[36m[Function: complete]\u001b[39m,\n    endWallTime: \u001b[33m1753733431166\u001b[39m,\n    error: {\n      message: \u001b[32m'Error: page.click: Target page, context or browser has been closed'\u001b[39m,\n      stack: \u001b[32m'Error: page.click: Target page, context or browser has been closed\\n'\u001b[39m +\n        \u001b[32m'    at /home/nathan/projects/baseline/ui/tests/e2e/user-flow.spec.ts:449:21\\n'\u001b[39m +\n        \u001b[32m'    at /home/nathan/projects/baseline/ui/tests/e2e/user-flow.spec.ts:447:7'\u001b[39m,\n      cause: \u001b[90mundefined\u001b[39m\n    }\n  }\n}\n"
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m=> browserType.launch started \u001b[38;5;45m+0ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m<= browserType.launch succeeded \u001b[38;5;45m+221ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m=> browser.newContext started \u001b[38;5;45m+3ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m<= browser.newContext succeeded \u001b[38;5;45m+8ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m=> browserContext.newPage started \u001b[38;5;45m+2ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m<= browserContext.newPage succeeded \u001b[38;5;45m+637ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m=> page.goto started \u001b[38;5;45m+3ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0mnavigating to \"http://localhost:5173/\", waiting until \"load\" \u001b[38;5;45m+1ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  \"commit\" event fired \u001b[38;5;45m+20ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  navigated to \"http://localhost:5173/\" \u001b[38;5;45m+0ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  navigated to \"http://localhost:5173/\" \u001b[38;5;45m+103ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  \"domcontentloaded\" event fired \u001b[38;5;45m+1ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  \"load\" event fired \u001b[38;5;45m+110ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m<= page.goto succeeded \u001b[38;5;45m+1ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m=> page.evaluate started \u001b[38;5;45m+3ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m<= page.evaluate succeeded \u001b[38;5;45m+10ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m=> browserContext.clearCookies started \u001b[38;5;45m+3ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  navigated to \"http://localhost:5173/\" \u001b[38;5;45m+1ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m<= browserContext.clearCookies succeeded \u001b[38;5;45m+1ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m=> page.waitForSelector started \u001b[38;5;45m+12ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0mwaiting for locator('button:has-text(\"Sign up\")') to be visible \u001b[38;5;45m+2ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  locator resolved to visible <button data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive text-primary underline-offse…>Sign up</button> \u001b[38;5;45m+45ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m<= page.waitForSelector succeeded \u001b[38;5;45m+9ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m=> page.isVisible started \u001b[38;5;45m+1ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  checking visibility of locator('text=Don\\'t have an account?') \u001b[38;5;45m+0ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m<= page.isVisible succeeded \u001b[38;5;45m+7ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m=> page.click started \u001b[38;5;45m+1ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0mwaiting for locator('text=Sign up') \u001b[38;5;45m+0ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  locator resolved to <button data-slot=\"button\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive text-primary underline-offse…>Sign up</button> \u001b[38;5;45m+3ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0mattempting click action \u001b[38;5;45m+1ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  waiting for element to be visible, enabled and stable \u001b[38;5;45m+0ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  element is not stable \u001b[38;5;45m+440ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0mretrying click action \u001b[38;5;45m+0ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  waiting for element to be visible, enabled and stable \u001b[38;5;45m+0ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  \"networkidle\" event fired \u001b[38;5;45m+35ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  element is visible, enabled and stable \u001b[38;5;45m+18ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  scrolling into view if needed \u001b[38;5;45m+0ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  done scrolling \u001b[38;5;45m+1ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  performing click action \u001b[38;5;45m+6ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  click action done \u001b[38;5;45m+17ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  waiting for scheduled navigations to finish \u001b[38;5;45m+0ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  navigations have finished \u001b[38;5;45m+1ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m<= page.click succeeded \u001b[38;5;45m+0ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m=> page.waitForTimeout started \u001b[38;5;45m+1ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m<= page.waitForTimeout succeeded \u001b[38;5;45m+1s\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m<= page.fill failed \u001b[38;5;45m+1ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m=> page.screenshot started \u001b[38;5;45m+2ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0mtaking page screenshot \u001b[38;5;45m+0ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0mwaiting for fonts to load... \u001b[38;5;45m+2ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0mfonts loaded \u001b[38;5;45m+2ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m<= page.screenshot succeeded \u001b[38;5;45m+49ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0mwaiting for locator('body') \u001b[38;5;45m+5ms\u001b[0m\n"
+                        },
+                        {
+                          "text": "  \u001b[38;5;45;1mpw:api \u001b[0m  locator resolved to <body>…</body> \u001b[38;5;45m+2ms\u001b[0m\n"
                         }
                       ],
                       "retry": 0,
-                      "startTime": "2025-07-28T20:08:31.060Z",
+                      "startTime": "2025-07-30T00:04:55.990Z",
                       "annotations": [],
                       "attachments": [
                         {
                           "name": "screenshot",
                           "contentType": "image/png",
-                          "path": "/home/nathan/projects/baseline/ui/test-results/user-flow-Complete-User-Fl-0adb9-versation-with-another-user-chromium/test-failed-1.png"
+                          "path": "/home/nathan/projects/baseline/ui/test-results/user-flow-Complete-User-Fl-fa84a-n-out-→-sign-in-→-chat-more-chromium/test-failed-1.png"
                         },
                         {
                           "name": "video",
                           "contentType": "video/webm",
-                          "path": "/home/nathan/projects/baseline/ui/test-results/user-flow-Complete-User-Fl-0adb9-versation-with-another-user-chromium/video.webm"
-                        },
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "/home/nathan/projects/baseline/ui/test-results/user-flow-Complete-User-Fl-0adb9-versation-with-another-user-chromium/test-failed-2.png"
+                          "path": "/home/nathan/projects/baseline/ui/test-results/user-flow-Complete-User-Fl-fa84a-n-out-→-sign-in-→-chat-more-chromium/video.webm"
                         },
                         {
                           "name": "error-context",
                           "contentType": "text/markdown",
-                          "path": "/home/nathan/projects/baseline/ui/test-results/user-flow-Complete-User-Fl-0adb9-versation-with-another-user-chromium/error-context.md"
+                          "path": "/home/nathan/projects/baseline/ui/test-results/user-flow-Complete-User-Fl-fa84a-n-out-→-sign-in-→-chat-more-chromium/error-context.md"
                         }
-                      ]
+                      ],
+                      "errorLocation": {
+                        "file": "/home/nathan/projects/baseline/ui/tests/e2e/user-flow.spec.ts",
+                        "column": 14,
+                        "line": 58
+                      }
                     }
                   ],
                   "status": "unexpected"
                 }
               ],
-              "id": "1b65c23c498386088a91-db6064ead6395a5731d6",
+              "id": "1b65c23c498386088a91-ce87c63a8389aee4ac4c",
               "file": "user-flow.spec.ts",
-              "line": 409,
+              "line": 387,
               "column": 3
             }
           ]
@@ -177,8 +351,8 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2025-07-28T20:08:28.587Z",
-    "duration": 125680.53600000001,
+    "startTime": "2025-07-30T00:04:53.448Z",
+    "duration": 5560.928,
     "expected": 0,
     "skipped": 0,
     "unexpected": 1,

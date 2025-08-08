@@ -23,7 +23,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # Generate Prisma client
 RUN bunx prisma generate
-EXPOSE 3001
+EXPOSE 3000
 ENV NODE_ENV=development
 # Use --watch for hot reloading in development
 CMD ["bun", "run", "--watch", "src/index.ts"]

@@ -3,27 +3,11 @@ import { apiService } from './api'
 import { offlineManager } from './offline'
 import { useConnectionStore } from './stores/connection-store'
 import { ReconnectionManager } from './websocket/reconnection-manager'
-import { MessageFailureHandler, type PendingMessage } from './websocket/message-failure-handler'
+import { MessageFailureHandler } from './websocket/message-failure-handler'
 import type { Message, Conversation } from './api'
+import type { IncomingMessage, TypingIndicator, PendingMessage, OutgoingType, OutgoingPayloadMap } from './websocket/types'
 
-export interface WebSocketMessage {
-  type: 'message_created' | 'message_updated' | 'message_deleted' | 
-        'conversation_created' | 'conversation_created_confirmed' | 'conversation_updated' | 
-        'user_joined' | 'user_left' | 'typing_start' | 'typing_stop' | 'ping' | 'pong' |
-        'join_conversation' | 'leave_conversation' | 'message' | 'connected' |
-        'joined_conversation'
-  data: any
-  timestamp: number
-}
-
-export interface TypingIndicator {
-  userId: string
-  userName: string
-  conversationId: string
-  isTyping?: boolean
-}
-
-
+// Message and typing types are imported from './websocket/types'
 
 export interface ConnectionHealth {
   isConnected: boolean
@@ -202,7 +186,7 @@ class WebSocketService {
       }
       
       console.log('Message type:', parsedMessage.type, 'Type of type:', typeof parsedMessage.type)
-      const message: WebSocketMessage = parsedMessage
+      const message = parsedMessage as IncomingMessage
       
       switch (message.type) {
         case 'message_created':
@@ -218,7 +202,12 @@ class WebSocketService {
           break
         case 'conversation_created':
           console.log('🎉 Received conversation_created event:', message.data)
-          this.handleConversationCreated(message.data.conversation || message.data)
+          {
+            const conv = (message.data && typeof message.data === 'object' && 'conversation' in message.data)
+              ? (message.data as { conversation: Conversation }).conversation
+              : (message.data as Conversation)
+            this.handleConversationCreated(conv)
+          }
           break
         case 'conversation_created_confirmed':
           // Handle when someone else creates a conversation that includes this user
@@ -329,7 +318,7 @@ class WebSocketService {
   }
 
   // Sending messages with acknowledgment tracking
-  sendMessage(type: WebSocketMessage['type'], data: any): string | void {
+  sendMessage<T extends OutgoingType>(type: T, data: OutgoingPayloadMap[T]): string | void {
     if (!this.isConnected()) {
       console.warn('WebSocket not connected, message not sent:', type, data)
       // For critical messages, immediately queue as failed to trigger UI update
@@ -341,7 +330,7 @@ class WebSocketService {
     }
 
     const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-    const message: WebSocketMessage & { id: string } = {
+    const message: { id: string } & { type: T; data: OutgoingPayloadMap[T]; timestamp: number } = {
       id: messageId,
       type,
       data,
@@ -404,7 +393,7 @@ class WebSocketService {
       }, this.messageTimeout)
       
       // Send retry
-      const retryMessage: WebSocketMessage & { id: string } = {
+      const retryMessage: { id: string } & { type: typeof pendingMessage.type; data: typeof pendingMessage.data; timestamp: number } = {
         id: messageId,
         type: pendingMessage.type,
         data: pendingMessage.data,
@@ -463,7 +452,7 @@ class WebSocketService {
     })
   }
   
-  private queueFailedMessage(type: WebSocketMessage['type'], data: any): void {
+  private queueFailedMessage<T extends OutgoingType>(type: T, data: OutgoingPayloadMap[T]): void {
     const failedMessage: PendingMessage = {
       id: `failed-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type,
@@ -503,7 +492,7 @@ class WebSocketService {
     this.pendingMessages.delete(messageId)
   }
   
-  private acknowledgePendingMessages(messageType: WebSocketMessage['type']): void {
+  private acknowledgePendingMessages(messageType: OutgoingType): void {
     console.log(`✅ Acknowledging all pending messages of type: ${messageType}`)
     
     // Find all pending messages of the specified type
@@ -546,7 +535,7 @@ class WebSocketService {
       msg.timestamp = Date.now() // Update timestamp for retry
       
       // Create retry message with same ID
-      const retryMessage: WebSocketMessage & { id: string } = {
+      const retryMessage: { id: string } & { type: OutgoingType; data: PendingMessage['data']; timestamp: number } = {
         id: msg.id, // Keep same ID to avoid confusion
         type: msg.type,
         data: msg.data,

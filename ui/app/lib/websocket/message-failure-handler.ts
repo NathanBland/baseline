@@ -2,20 +2,8 @@
  * Message Failure Handler - Manages instant failure of pending messages
  * when connection is lost or errors occur
  */
-
-export interface PendingMessage {
-  id: string
-  type: 'message_created' | 'message_updated' | 'message_deleted' | 
-        'conversation_created' | 'conversation_created_confirmed' | 'conversation_updated' | 
-        'user_joined' | 'user_left' | 'typing_start' | 'typing_stop' | 'ping' | 'pong' |
-        'join_conversation' | 'leave_conversation' | 'message' | 'connected' |
-        'joined_conversation'
-  data: any
-  timestamp: number
-  retryCount: number
-  maxRetries: number
-  timeoutId?: NodeJS.Timeout
-}
+import type { PendingMessage, OutgoingType, OutgoingPayloadMap } from './types'
+export type { PendingMessage } from './types'
 
 export type FailureListener = (failedMessage: PendingMessage) => void
 
@@ -92,7 +80,7 @@ export class MessageFailureHandler {
   /**
    * Create a failed message from disconnected send attempt
    */
-  createFailedMessage(type: PendingMessage['type'], data: any, reason: string = 'WebSocket not connected'): PendingMessage {
+  createFailedMessage<T extends OutgoingType>(type: T, data: OutgoingPayloadMap[T]): PendingMessage<T> {
     return {
       id: `failed-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type,
@@ -106,13 +94,12 @@ export class MessageFailureHandler {
   /**
    * Queue a failed message with timeout backup notification
    */
-  queueFailedMessage(
-    type: PendingMessage['type'], 
-    data: any, 
-    pendingMessages: Map<string, PendingMessage>,
-    reason: string = 'WebSocket not connected'
+  queueFailedMessage<T extends OutgoingType>(
+    type: T, 
+    data: OutgoingPayloadMap[T], 
+    pendingMessages: Map<string, PendingMessage>
   ): void {
-    const failedMessage = this.createFailedMessage(type, data, reason)
+    const failedMessage = this.createFailedMessage(type, data)
     
     console.warn('📥 Queueing failed message for retry:', failedMessage.id, type)
     

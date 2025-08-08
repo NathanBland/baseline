@@ -1,6 +1,7 @@
 import { lucia } from '../auth/index.js'
 import { prisma } from '../db/index.js'
 import { AuthService } from '../modules/auth/service.js'
+import { JwtService } from '../auth/jwt.js'
 import { redisConnectionManager } from './redis-connection-manager.js'
 
 interface WebSocketConnection {
@@ -113,46 +114,67 @@ export const websocketHandler = {
       }
       
       console.log('🔑 WebSocket token received:', token.substring(0, 20) + '...')
-      console.log('🔍 Attempting session validation...')
+      console.log('🔍 Attempting JWT validation...')
       
-      // Validate session using AuthService (token is the sessionId)
-      const sessionValidation = await AuthService.validateSession(token)
-      console.log('🔍 Session validation result:', sessionValidation ? 'SUCCESS' : 'FAILED')
+      // Verify JWT token
+      let userId: string;
+      let sessionId: string;
+      let username: string;
       
-      if (!sessionValidation) {
-        console.log('❌ Session validation failed')
-        ws.send(JSON.stringify({ error: 'Invalid or expired session' }))
-        ws.close()
-        return
+      try {
+        const payload = await JwtService.verifyToken(token);
+        console.log('🔍 JWT token verified:', { userId: payload.userId, type: payload.type });
+        
+        if (payload.type !== 'access') {
+          throw new Error('Invalid token type - access token required');
+        }
+        
+        // Validate session is still active
+        const sessionValidation = await AuthService.validateSession(payload.sessionId);
+        if (!sessionValidation) {
+          throw new Error('Session not found or expired');
+        }
+        
+        userId = payload.userId;
+        sessionId = payload.sessionId;
+        username = sessionValidation.user.username;
+        
+        console.log(`✅ WebSocket authenticated for user: ${username} (${userId})`);
+      } catch (error) {
+        console.error('❌ WebSocket authentication failed:', error);
+        ws.send(JSON.stringify({ 
+          error: 'Authentication failed', 
+          message: error instanceof Error ? error.message : 'Invalid token' 
+        }));
+        ws.close(4001, 'Authentication failed');
+        return;
       }
-      
-      console.log('✅ Session validation successful for user:', sessionValidation.user.username)
       
       // Create authenticated connection
       const connection: WebSocketConnection = {
         ws,
-        userId: sessionValidation.user.id,
+        userId,
         conversationIds: new Set()
-      }
+      };
       
       // Store in local map AND Redis for scoped delivery
-      connections.set(ws.id, connection)
+      connections.set(ws.id, connection);
       
       // Handle Redis registration with error handling
       try {
-        await redisConnectionManager.addConnection(ws.id, sessionValidation.user.id)
-        console.log(`✅ WebSocket connection registered in Redis: ${ws.id}`)
+        await redisConnectionManager.addConnection(ws.id, userId);
+        console.log(`✅ WebSocket connection registered in Redis: ${ws.id}`);
       } catch (redisError) {
-        console.warn('⚠️ Redis connection registration failed, continuing without Redis:', redisError)
+        console.warn('⚠️ Redis connection registration failed, continuing without Redis:', redisError);
         // Continue without Redis - WebSocket will still work with local connections only
       }
       
       const connectedMessage = {
         type: 'connected',
         message: 'WebSocket authenticated successfully',
-        userId: sessionValidation.user.id,
-        username: sessionValidation.user.username
-      }
+        userId,
+        username
+      };
       console.log('Sending WebSocket message:', JSON.stringify(connectedMessage))
       ws.send(JSON.stringify(connectedMessage))
       

@@ -32,7 +32,7 @@ bun dev
 cd ui/
 npm run dev
 ```
-- Runs on http://localhost:3001
+- Runs on http://localhost:5173
 - Uses Node LTS (ensure via nvm)
 - Auto-reloads on file changes
 
@@ -174,14 +174,14 @@ make test-coverage  # Both API and UI with coverage
 DATABASE_URL="postgresql://postgres:password@localhost:5432/baseline"
 REDIS_URL="redis://localhost:6379"
 NODE_ENV="development"
-UI_URL="http://localhost:3001"
+UI_URL="http://localhost:5173"
 SESSION_SECRET="your-session-secret"
 ```
 
 **UI (.env in ui/)**
 ```
-VITE_API_URL="http://localhost:3000"
-VITE_WS_URL="ws://localhost:3000"
+API_URL="http://localhost:3000"
+WS_URL="ws://localhost:3000"
 ```
 
 ## Common Development Tasks

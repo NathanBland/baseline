@@ -33,6 +33,7 @@
   },
   "devDependencies": {
     "@types/bun": "^1.2.19",
+    "bun-mock-prisma": "^1.2.1",
     "bun-types": "^1.2.19"
   },
   "module": "src/index.js"

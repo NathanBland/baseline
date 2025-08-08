@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { motion } from "motion/react"
 import { 
   Settings, 
   User, 
-  Bell, 
   Palette, 
   Shield, 
   LogOut,
@@ -17,8 +16,6 @@ import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
-import { Separator } from "~/components/ui/separator"
-import { Switch } from "~/components/ui/switch"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 
 interface UserSettingsProps {
@@ -35,32 +32,19 @@ interface UserSettingsProps {
 export function UserSettings({ user, onLogout, onUpdateProfile }: UserSettingsProps) {
   const [name, setName] = useState(user.name)
   const [email, setEmail] = useState(user.email)
-  const [notifications, setNotifications] = useState(true)
-  const [soundEnabled, setSoundEnabled] = useState(true)
   const [theme, setTheme] = useState<'light' | 'dark' | 'solarized-dark' | 'system'>('system')
   const [isLoading, setIsLoading] = useState(false)
 
-  // Initialize theme from localStorage on component mount
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'solarized-dark' | 'system' | null
-    if (savedTheme && ['light', 'dark', 'solarized-dark', 'system'].includes(savedTheme)) {
-      setTheme(savedTheme)
-      applyTheme(savedTheme)
-    } else {
-      // Default to system theme if no saved preference
-      setTheme('system')
-      applyTheme('system')
-    }
-  }, [])
+  
 
-  const getSystemTheme = (): 'light' | 'dark' => {
+  const getSystemTheme = useCallback((): 'light' | 'dark' => {
     if (typeof window !== 'undefined' && window.matchMedia) {
       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
     }
     return 'light'
-  }
+  }, [])
 
-  const applyTheme = (newTheme: 'light' | 'dark' | 'solarized-dark' | 'system') => {
+  const applyTheme = useCallback((newTheme: 'light' | 'dark' | 'solarized-dark' | 'system') => {
     const html = document.documentElement
     html.classList.remove('dark', 'solarized-dark')
     
@@ -76,7 +60,20 @@ export function UserSettings({ user, onLogout, onUpdateProfile }: UserSettingsPr
     }
     
     console.log('Applied theme:', actualTheme, 'from:', newTheme)
-  }
+  }, [getSystemTheme])
+
+  // Initialize theme from localStorage on component mount
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'solarized-dark' | 'system' | null
+    if (savedTheme && ['light', 'dark', 'solarized-dark', 'system'].includes(savedTheme)) {
+      setTheme(savedTheme)
+      applyTheme(savedTheme)
+    } else {
+      // Default to system theme if no saved preference
+      setTheme('system')
+      applyTheme('system')
+    }
+  }, [applyTheme])
 
   const handleSaveProfile = async () => {
     setIsLoading(true)

@@ -22,12 +22,31 @@ export default defineConfig({
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: 'http://localhost:5173',
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
-    /* Take screenshot on failure */
-    screenshot: 'only-on-failure',
-    /* Record video on failure */
-    video: 'retain-on-failure',
+    /* Collect trace for all tests */
+    trace: 'on',
+    /* Take screenshot for all tests */
+    screenshot: 'on',
+    /* Record video for all tests */
+    video: 'on',
+    /* Enable debug logs */
+    launchOptions: {
+      logger: {
+        isEnabled: (name, severity) => {
+          // Use params to satisfy lint and keep logging enabled
+          return !!name || !!severity || true;
+        },
+        log: (name, severity, message, args) => console.log(`[${name}:${severity}] ${message}`, args)
+      },
+      headless: false // Run in headed mode to see the browser
+    },
+    contextOptions: {
+      logger: {
+        isEnabled: (name, severity) => {
+          return !!name || !!severity || true;
+        },
+        log: (name, severity, message, args) => console.log(`[${name}:${severity}] ${message}`, args)
+      }
+    }
   },
 
   /* Configure projects for major browsers */

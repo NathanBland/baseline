@@ -1,4 +1,4 @@
-import { Page, expect } from '@playwright/test';
+import { Page } from '@playwright/test';
 
 /**
  * Utility functions for Playwright tests
@@ -26,7 +26,8 @@ export async function waitForWebSocketConnection(page: Page, timeout = 10000) {
   await page.waitForFunction(
     () => {
       // Check if WebSocket service is connected
-      return (window as any).webSocketService?.isConnected() === true;
+      const w = window as unknown as { webSocketService?: { isConnected: () => boolean } };
+      return w.webSocketService?.isConnected() === true;
     },
     { timeout }
   );
@@ -142,7 +143,7 @@ export function generateTestUser(prefix = 'test'): TestUser {
 export async function waitForElementToBeStable(page: Page, selector: string, timeout = 5000) {
   console.log(`⏸️  Waiting for element to be stable: ${selector}`);
   
-  await page.waitForSelector(selector);
+  await page.waitForSelector(selector, { timeout });
   
   // Wait for element to stop moving/changing
   let previousRect = await page.locator(selector).boundingBox();

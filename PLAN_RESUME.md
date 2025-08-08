@@ -114,9 +114,9 @@ baseline/
    ```
 
 ### **Expected Outcomes:**
-- **UI**: http://localhost:3000
-- **API**: http://localhost:3001  
-- **API Docs**: http://localhost:3001/swagger
+- **UI**: http://localhost:5173
+- **API**: http://localhost:3000
+- **API Docs**: http://localhost:3000/swagger
 - **Database**: PostgreSQL on port 5432
 - **Redis**: Redis on port 6379
 
@@ -154,9 +154,9 @@ baseline/
 - [ ] Development environment starts (`make dev`)
 - [ ] Database migrations run (`make migrate`)
 - [ ] Sample data seeded (`make seed`)
-- [ ] UI accessible at http://localhost:3000
-- [ ] API accessible at http://localhost:3001
-- [ ] API docs at http://localhost:3001/swagger
+- [ ] UI accessible at http://localhost:5173
+- [ ] API accessible at http://localhost:3000
+- [ ] API docs at http://localhost:3000/swagger
 - [ ] Linting issues resolved
 - [ ] Tests pass (`make test`)
 

@@ -12,7 +12,11 @@ const STORAGE_KEYS = {
 export interface PendingAction {
   id: string
   type: 'send_message' | 'update_message' | 'delete_message' | 'create_conversation'
-  data: any
+  data: 
+    | { conversationId: string; content: string; type?: 'text' | 'image' | 'file' | 'link' } // send_message
+    | { id: string; content: string } // update_message
+    | { id: string } // delete_message
+    | { title: string; participantIds: string[] } // create_conversation
   timestamp: number
   retryCount: number
 }

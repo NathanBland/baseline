@@ -129,10 +129,9 @@ export type UserInput = typeof userSchema.static
 ```
 
 ### Working URLs (when API is fixed)
-- **UI**: http://localhost:3000 (Remix dev server)
-- **API**: http://localhost:3001 (ElysiaJS server)
-- **API Docs**: http://localhost:3001/swagger
-- **WebSocket Test**: http://localhost:3000/websocket-test
+- **UI**: http://localhost:5173 (Remix dev server)
+- **API**: http://localhost:3000 (ElysiaJS server)
+- **API Docs**: http://localhost:3000/swagger
 
 ## 📁 Project Structure
 ```

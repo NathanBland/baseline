@@ -6,7 +6,7 @@ The Baseline API is built with ElysiaJS and Bun, providing a fast, type-safe RES
 
 ## Base URL
 
-- **Development**: `http://localhost:3001`
+- **Development**: `http://localhost:3000`
 - **Production**: `https://your-domain.com`
 
 ## Authentication

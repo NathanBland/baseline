@@ -11,7 +11,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/com
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Checkbox } from "~/components/ui/checkbox"
-import { Separator } from "~/components/ui/separator"
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
@@ -32,31 +31,63 @@ export function LoginForm() {
     const name = formData.get("name") as string
     const confirmPassword = formData.get("confirmPassword") as string
     
+    console.log('Form submission started', { isSignUp, email, name });
+    
     try {
       if (isSignUp) {
+        console.log('Processing sign-up flow...');
         // Validate passwords match
         if (password !== confirmPassword) {
-          setError("Passwords do not match!")
-          setIsLoading(false)
-          return
+          const errorMsg = 'Passwords do not match!';
+          console.error('Validation error:', errorMsg);
+          setError(errorMsg);
+          setIsLoading(false);
+          return;
         }
         
+        console.log('Calling apiService.register...');
         // Register new user
-        await apiService.register(email, password, name)
-        console.log("Registration successful!")
+        const response = await apiService.register(email, password, name);
+        console.log('Registration API response:', response);
+        
+        // Verify user is set in localStorage
+        const storedUser = localStorage.getItem('current_user');
+        const authToken = localStorage.getItem('auth_token');
+        console.log('After registration - localStorage state:', { 
+          hasUser: !!storedUser,
+          hasAuthToken: !!authToken,
+          user: storedUser ? JSON.parse(storedUser) : null
+        });
+        
+        console.log('Registration successful!');
       } else {
+        console.log('Processing login flow...');
         // Login existing user
-        await apiService.login(email, password)
-        console.log("Login successful!")
+        const response = await apiService.login(email, password);
+        console.log('Login API response:', response);
+        console.log('Login successful!');
       }
       
-      // Redirect to chat page on success
-      navigate("/chat")
+      // Verify navigation state before redirecting
+      console.log('Preparing to navigate to /chat');
+      console.log('Current location before navigate:', window.location.pathname);
+      
+      // Use replace: true to avoid adding to history stack
+      navigate("/chat", { replace: true });
+      
+      console.log('Navigate method called, waiting for navigation...');
+      
+      // Add a small delay to ensure navigation starts
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
     } catch (error) {
-      console.error("Authentication error:", error)
-      setError(error instanceof Error ? error.message : "Authentication failed")
+      console.error("Authentication error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Authentication failed";
+      console.error('Error details:', { error, message: errorMessage });
+      setError(errorMessage);
     } finally {
-      setIsLoading(false)
+      console.log('Form submission completed, setting loading to false');
+      setIsLoading(false);
     }
   }
 

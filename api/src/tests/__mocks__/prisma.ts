@@ -5,6 +5,10 @@ export const mockUser = {
   id: 'user1', // Updated to match lucia mock
   username: 'testuser',
   email: 'test@example.com',
+  firstName: null,
+  lastName: null,
+  avatar: null,
+  emailVerified: false,
   hashedPassword: '$2b$10$mock.hash',
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01')
@@ -348,7 +352,7 @@ export const mockPrisma = {
         // Check participants inside createdConversations
         for (const conversation of createdConversations) {
           if (conversation.id === where.conversationId) {
-            const participant = conversation.participants?.find(p => 
+            const participant = conversation.participants?.find((p: any) => 
               p.userId === where.userId &&
               (!where.role || (where.role.in ? where.role.in.includes(p.role) : p.role === where.role))
             )
@@ -367,7 +371,8 @@ export const mockPrisma = {
       }
       
       // Handle other query patterns for backward compatibility
-      return createdParticipants[0] || mockConversation.participants[0] || null
+      // Respect filters: return null when no participant matches
+      return null
     },
     findMany: async () => mockConversation.participants,
     update: async () => mockConversation.participants[0],

@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react"
 import { motion } from "motion/react"
 import { Button } from "~/components/ui/button"
-import { Separator } from "~/components/ui/separator"
-import { apiService } from "~/lib/api"
 
 interface OAuthProvider {
   id: string
@@ -28,9 +26,10 @@ export function OAuthProviders() {
   const loadProviders = async () => {
     try {
       setLoading(true)
-      const baseUrl = typeof window !== 'undefined' && (window as any).ENV 
-        ? (window as any).ENV.API_URL 
-        : 'http://localhost:3000'
+      const env = (typeof window !== 'undefined'
+        ? (window as unknown as { ENV?: { API_URL?: string } }).ENV
+        : undefined)
+      const baseUrl = env?.API_URL || 'http://localhost:3000'
       const response = await fetch(`${baseUrl}/auth/providers`, {
         credentials: 'include'
       })
@@ -98,6 +97,11 @@ export function OAuthProviders() {
     )
   }
 
+  // Don't render anything if there are no providers
+  if (providers.length === 0) {
+    return null;
+  }
+
   if (error) {
     return (
       <div className="text-center text-sm text-destructive">
@@ -106,9 +110,7 @@ export function OAuthProviders() {
     )
   }
 
-  if (providers.length === 0) {
-    return null
-  }
+  
 
   return (
     <div className="space-y-4">

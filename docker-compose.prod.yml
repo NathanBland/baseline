@@ -65,7 +65,7 @@ services:
     networks:
       - baseline-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "${API_URL}/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -91,7 +91,7 @@ services:
     networks:
       - baseline-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "${UI_URL}"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
       interval: 30s
       timeout: 10s
       retries: 3

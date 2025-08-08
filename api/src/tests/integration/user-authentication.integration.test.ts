@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
-import { app } from '../../index'
+import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'bun:test'
+// Import unit-test mock setup and auth reset helpers
+import { setupUnitTestMocks, resetAuthMockState } from '../setup.test'
 import { 
   cleanupTestData, 
   generateTestData, 
@@ -9,8 +10,18 @@ import {
 } from './setup'
 
 describe('User Authentication Integration', () => {
+  // Elysia app instance (loaded after applying module mocks)
+  let app: any
+
+  // Apply module mocks before importing the app so mocked prisma/lucia are used
+  beforeAll(async () => {
+    setupUnitTestMocks()
+    const mod = await import('../../index')
+    app = mod.app
+  })
   beforeEach(async () => {
     await cleanupTestData()
+    resetAuthMockState()
   })
 
   afterEach(async () => {
@@ -58,9 +69,9 @@ describe('User Authentication Integration', () => {
       // Then: Should return user profile information
       expect(profileResponse.status).toBe(200)
       const profileData = await profileResponse.json()
-      expect(profileData.user).toBeDefined()
-      expect(profileData.user.username).toBe(testData.username)
-      expect(profileData.user.email).toBe(testData.email)
+      expect(profileData).toBeDefined()
+      expect(profileData.username).toBe(testData.username)
+      expect(profileData.email).toBe(testData.email)
 
       // When: User logs out
       const logoutResponse = await app.handle(
@@ -139,7 +150,9 @@ describe('User Authentication Integration', () => {
       // Then: Should return user profile
       expect(profileResponse.status).toBe(200)
       const profileData = await profileResponse.json()
-      expect(profileData.user.username).toBe(testData.username)
+      expect(profileData).toBeDefined()
+      expect(profileData.username).toBe(testData.username)
+      expect(profileData.email).toBe(testData.email)
     })
   })
 

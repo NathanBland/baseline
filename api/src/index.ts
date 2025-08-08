@@ -9,9 +9,9 @@ import { authModule } from './modules/auth'
 import { conversationModule } from './modules/conversations'
 import { messageModule } from './modules/messages'
 import { websocketHandler } from './websocket/index.js'
+import { userModule } from './modules/users'
 
-// Initialize database connections
-await initializeDatabase()
+// Initialize database connections only when starting server (avoids top-level await in tests)
 
 // Configure CORS allowed origins
 const getAllowedOrigins = (): string[] => {
@@ -119,7 +119,7 @@ const app = new Elysia()
   .use(authModule)
   .use(conversationModule)
   .use(messageModule)
-  .use((await import('./modules/users')).userModule)
+  .use(userModule)
   .get('/', () => new Response('Hello Elysia', {
     headers: { 'content-type': 'text/plain' }
   }))

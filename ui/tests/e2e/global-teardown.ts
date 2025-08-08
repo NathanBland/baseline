@@ -1,6 +1,5 @@
-import { FullConfig } from '@playwright/test';
-
-async function globalTeardown(config: FullConfig) {
+// Global teardown for Playwright tests
+async function globalTeardown() {
   console.log('🧹 Global teardown: Cleaning up after Playwright tests...');
   
   // You can add global cleanup logic here, such as:

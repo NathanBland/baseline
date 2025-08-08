@@ -1,10 +1,11 @@
 import type { MetaFunction } from "@remix-run/node"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useNavigate, useSearchParams } from "@remix-run/react"
 import { motion } from "motion/react"
 
 import { ChatLayout } from "~/components/chat-layout"
 import { ErrorBoundary, ChatErrorFallback } from "~/components/error-boundary"
+import { Button } from "~/components/ui/button"
 import { apiService, type Conversation as ApiConversation, type Message as ApiMessage, type User } from "~/lib/api"
 import { webSocketService } from '~/lib/websocket'
 import { type PendingMessage } from '~/lib/websocket/message-failure-handler'
@@ -17,6 +18,8 @@ interface ChatConversation {
   timestamp: string
   unreadCount: number
   participants: { id: string; name: string; avatar?: string }[]
+  // ISO timestamp for sorting by recent activity
+  lastActivityAt?: string
 }
 
 interface ChatMessage {
@@ -72,7 +75,8 @@ const adaptConversation = (conv: ApiConversation, unreadCounts: Map<string, numb
     lastMessage: conv.lastMessage?.content || conv.messages?.[conv.messages.length - 1]?.content || 'No messages yet',
     timestamp: formatTimestamp(conv.updatedAt),
     unreadCount: unreadCounts.get(conv.id) || 0,
-    participants
+    participants,
+    lastActivityAt: conv.updatedAt
   }
 }
 
@@ -96,6 +100,7 @@ interface TypingIndicator {
   userId: string
   userName: string
   conversationId: string
+  isTyping?: boolean
 }
 
 export default function ChatPage() {
@@ -113,6 +118,9 @@ export default function ChatPage() {
   const [pendingConversations, setPendingConversations] = useState<Set<string>>(new Set()) // Conversations waiting for creator's first message
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  // Loading and auth error states must be declared before any early returns to avoid conditional hooks
+  const [isLoading, setIsLoading] = useState(true)
+  const [authError, setAuthError] = useState<string | null>(null)
   
   // Use ref to track active conversation ID to avoid stale closures in WebSocket listeners
   const activeConversationIdRef = useRef<string | undefined>(activeConversationId)
@@ -122,6 +130,70 @@ export default function ChatPage() {
     activeConversationIdRef.current = activeConversationId
   }, [activeConversationId])
   
+  // Prevent React StrictMode double execution in development
+  const initRef = useRef(false)
+  // Track if we've successfully initialized to prevent re-initialization
+  const hasInitializedRef = useRef(false)
+  // Prevent race condition between manual conversation selection and URL sync
+  const isUpdatingUrlRef = useRef(false)
+
+  // Stable conversation selector used by URL-sync effect and UI interactions
+  const handleConversationSelect = useCallback(async (conversationId: string) => {
+    console.log('🔄 handleConversationSelect called with:', conversationId, 'current active:', activeConversationId)
+    try {
+      // Leave previous conversation if any
+      if (activeConversationId && wsService && wsService.isConnected()) {
+        wsService.leaveConversation(activeConversationId)
+      }
+      
+      console.log('🔄 Setting active conversation ID to:', conversationId)
+      setActiveConversationId(conversationId)
+      setError(null)
+      
+      // Clear unread count for this conversation when opened
+      setUnreadCounts(prev => {
+        const newCounts = new Map(prev)
+        if (newCounts.has(conversationId)) {
+          console.log('✅ Clearing unread count for conversation:', conversationId)
+          newCounts.delete(conversationId)
+        }
+        return newCounts
+      })
+      
+      // Update URL to reflect selected conversation
+      console.log('🔗 Updating URL with conversation ID:', conversationId)
+      isUpdatingUrlRef.current = true
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev)
+        newParams.set('c', conversationId)
+        console.log('🔗 New URL params:', newParams.toString())
+        return newParams
+      })
+      
+      // Load messages for the selected conversation
+      console.log('📬 Loading messages for conversation:', conversationId)
+      const response = await apiService.getMessages(conversationId)
+      console.log('📬 API response:', response)
+      // Handle new API response structure with messages array
+      const conversationMessages = response.messages || []
+      console.log('📬 Found', conversationMessages.length, 'messages')
+      const adaptedMessages = conversationMessages.map(adaptMessage)
+      console.log('📬 Adapted messages:', adaptedMessages)
+      setMessages(adaptedMessages)
+      
+      // Join the new conversation for real-time updates
+      if (wsService && wsService.isConnected()) {
+        wsService.joinConversation(conversationId)
+      }
+      
+      console.log('✅ Conversation selected successfully:', conversationId)
+      
+    } catch (error) {
+      console.error('Failed to select conversation:', error)
+      setError('Failed to load conversation.')
+    }
+  }, [activeConversationId, wsService, setSearchParams])
+
   // Update conversations when unread counts change to show badges
   useEffect(() => {
     console.log('🔄 Updating conversations with unread counts:', Array.from(unreadCounts.entries()))
@@ -139,35 +211,53 @@ export default function ChatPage() {
   useEffect(() => {
     const checkAuthAndFetchToken = async () => {
       try {
+        console.log('🔐 Checking authentication status...')
+        
         // First, try to get current user (this checks if we have a valid session)
         const user = await apiService.getCurrentUser()
+        console.log('✅ User authenticated:', { id: user.id, email: user.email })
         setCurrentUser(user)
         
         // If we have a session but no token in localStorage, fetch it
         // This handles OIDC redirects where we have a session cookie but need a WebSocket token
         const existingToken = localStorage.getItem('auth_token')
         if (!existingToken) {
-          console.log('🔑 No WebSocket token found, fetching from API...')
+          console.log('🔑 No WebSocket token found in localStorage, fetching from API...')
           try {
             const { token } = await apiService.getAuthToken()
+            console.log('✅ Successfully fetched WebSocket token from API')
             localStorage.setItem('auth_token', token)
-            console.log('✅ Successfully fetched WebSocket token after OIDC login')
+            console.log('🔑 Stored WebSocket token in localStorage')
           } catch (tokenError) {
             console.warn('⚠️ Failed to fetch WebSocket token:', tokenError)
             // Continue anyway - user is authenticated via session
           }
+        } else {
+          console.log('🔑 Using existing WebSocket token from localStorage')
         }
         
+        // Log the current auth state for debugging
+        console.log('🔍 Current auth state:', {
+          hasUser: !!user,
+          hasToken: !!localStorage.getItem('auth_token'),
+          currentPath: window.location.pathname
+        })
+        
       } catch (error) {
-        console.error('❌ Authentication failed:', error)
+        console.error('❌ Authentication check failed:', error)
         // Redirect to login if not authenticated
-        navigate('/login')
+        navigate('/login', { replace: true })
         return
       }
     }
     
     checkAuthAndFetchToken()
-  }, [])
+    
+    // Cleanup function
+    return () => {
+      console.log('🧹 Cleaning up auth check')
+    }
+  }, [navigate])
 
   // Handle initial conversation loading from URL parameter
   useEffect(() => {
@@ -198,15 +288,8 @@ export default function ChatPage() {
         })
       }
     }
-  }, [conversations, searchParams])
+  }, [conversations, searchParams, activeConversationId, handleConversationSelect, setSearchParams, currentUser])
 
-  // Prevent React StrictMode double execution in development
-  const initRef = useRef(false)
-  // Track if we've successfully initialized to prevent re-initialization
-  const hasInitializedRef = useRef(false)
-  // Prevent race condition between manual conversation selection and URL sync
-  const isUpdatingUrlRef = useRef(false)
-  
   // Initialize user and data when currentUser becomes available
   useEffect(() => {
     // Guard against React StrictMode double execution in development
@@ -348,7 +431,7 @@ export default function ChatPage() {
                   ...conv,
                   lastMessage: message.content,
                   timestamp: formatTimestamp(message.createdAt),
-                  _lastActivity: message.createdAt // Store for sorting
+                  lastActivityAt: message.createdAt // Store for sorting
                 }
               }
               return conv
@@ -356,8 +439,8 @@ export default function ChatPage() {
             
             // Re-sort by most recent activity
             return updated.sort((a, b) => {
-              const aTime = new Date((a as any)._lastActivity || a.timestamp || 0).getTime()
-              const bTime = new Date((b as any)._lastActivity || b.timestamp || 0).getTime()
+              const aTime = new Date(a.lastActivityAt ?? 0).getTime()
+              const bTime = new Date(b.lastActivityAt ?? 0).getTime()
               return bTime - aTime // Most recent first
             })
           })
@@ -384,7 +467,7 @@ export default function ChatPage() {
         })
         
         // Set up typing indicator WebSocket listener
-        unsubscribeTyping = webSocketService.onTyping((typingData: any) => {
+        unsubscribeTyping = webSocketService.onTyping((typingData: TypingIndicator) => {
           const { userId, userName, conversationId, isTyping } = typingData
           
           if (isTyping) {
@@ -413,10 +496,11 @@ export default function ChatPage() {
           
           // Mark corresponding optimistic message as failed
           if (failedMessage.type === 'message_created') {
+            const data = (failedMessage as unknown as PendingMessage<'message_created'>).data
             setMessages(prev => prev.map(msg => {
               // Find matching optimistic message by content and author
               if (msg.pending && 
-                  msg.content === failedMessage.data.content &&
+                  msg.content === data.content &&
                   msg.authorId === currentUser?.id) {
                 return {
                   ...msg,
@@ -433,7 +517,8 @@ export default function ChatPage() {
           // For non-message failures (join_conversation, typing, etc.), still reset loading state
           // and show user-friendly error if needed
           if (failedMessage.type === 'join_conversation') {
-            console.warn('🚫 Failed to join conversation:', failedMessage.data?.conversationId)
+            const data = (failedMessage as unknown as PendingMessage<'join_conversation'>).data
+            console.warn('🚫 Failed to join conversation:', data.conversationId)
             // Could show toast notification here in the future
           }
           
@@ -480,61 +565,9 @@ export default function ChatPage() {
         unsubscribeFailure()
       }
     }
-  }, [currentUser]) // Re-run when currentUser becomes available
+  }, [currentUser, wsService, navigate, unreadCounts]) // Re-run when currentUser or dependencies change
 
-  const handleConversationSelect = async (conversationId: string) => {
-    console.log('🔄 handleConversationSelect called with:', conversationId, 'current active:', activeConversationId)
-    try {
-      // Leave previous conversation if any
-      if (activeConversationId && wsService && wsService.isConnected()) {
-        wsService.leaveConversation(activeConversationId)
-      }
-      
-      console.log('🔄 Setting active conversation ID to:', conversationId)
-      setActiveConversationId(conversationId)
-      setError(null)
-      
-      // Clear unread count for this conversation when opened
-      setUnreadCounts(prev => {
-        const newCounts = new Map(prev)
-        if (newCounts.has(conversationId)) {
-          console.log('✅ Clearing unread count for conversation:', conversationId)
-          newCounts.delete(conversationId)
-        }
-        return newCounts
-      })
-      
-      // Update URL to reflect selected conversation
-      console.log('🔗 Updating URL with conversation ID:', conversationId)
-      isUpdatingUrlRef.current = true
-      setSearchParams(prev => {
-        const newParams = new URLSearchParams(prev)
-        newParams.set('c', conversationId)
-        console.log('🔗 New URL params:', newParams.toString())
-        return newParams
-      })
-      
-      // Load messages for the selected conversation
-      console.log('📬 Loading messages for conversation:', conversationId)
-      const response = await apiService.getMessages(conversationId)
-      console.log('📬 API response:', response)
-      // Handle new API response structure with messages array
-      const conversationMessages = response.messages || []
-      console.log('📬 Found', conversationMessages.length, 'messages')
-      const adaptedMessages = conversationMessages.map(adaptMessage)
-      console.log('📬 Adapted messages:', adaptedMessages)
-      setMessages(adaptedMessages)
-      
-      // Join the new conversation for real-time updates
-      if (wsService && wsService.isConnected()) {
-        wsService.joinConversation(conversationId)
-      }
-      
-    } catch (error) {
-      console.error('Failed to load conversation:', error)
-      setError('Failed to load conversation messages.')
-    }
-  }
+  
 
   const handleRetryMessage = async (messageId: string) => {
     const failedMessage = failedMessages.get(messageId)
@@ -545,15 +578,18 @@ export default function ChatPage() {
       
       // Update UI to show retrying state - match by content since IDs are different
       setMessages(prev => prev.map(msg => {
-        if (msg.content === failedMessage.data.content && 
+        if (failedMessage.type === 'message_created') {
+          const data = (failedMessage as unknown as PendingMessage<'message_created'>).data
+          if (msg.content === data.content && 
             msg.authorId === currentUser?.id &&
             msg.failed) {
-          return {
-            ...msg,
-            failed: false,
-            pending: true,
-            timestamp: 'retrying...',
-            retryCount: (msg.retryCount || 0) + 1
+            return {
+              ...msg,
+              failed: false,
+              pending: true,
+              timestamp: 'retrying...',
+              retryCount: (msg.retryCount || 0) + 1
+            }
           }
         }
         return msg
@@ -568,11 +604,14 @@ export default function ChatPage() {
       
       // Attempt to send the message again
       if (wsService && wsService.isConnected()) {
-        wsService.sendMessage('message_created', {
-          conversationId: activeConversationId,
-          content: failedMessage.data.content,
-          type: failedMessage.data.type || 'text'
-        })
+        if (failedMessage.type === 'message_created') {
+          const data = (failedMessage as unknown as PendingMessage<'message_created'>).data
+          wsService.sendMessage('message_created', {
+            conversationId: activeConversationId,
+            content: data.content,
+            type: data.type || 'text'
+          })
+        }
         console.log('📤 Retry message sent via WebSocket')
       } else {
         throw new Error('WebSocket not connected')
@@ -583,15 +622,18 @@ export default function ChatPage() {
       
       // Mark as failed again if retry fails - match by content since IDs are different
       setMessages(prev => prev.map(msg => {
-        if (msg.content === failedMessage.data.content && 
-            msg.authorId === currentUser?.id &&
-            msg.pending) {
-          return {
-            ...msg,
-            failed: true,
-            pending: false,
-            timestamp: 'retry failed',
-            canRetry: (msg.retryCount || 0) < 3 // Allow up to 3 retries
+        if (failedMessage.type === 'message_created') {
+          const data = (failedMessage as unknown as PendingMessage<'message_created'>).data
+          if (msg.content === data.content && 
+              msg.authorId === currentUser?.id &&
+              msg.pending) {
+            return {
+              ...msg,
+              failed: true,
+              pending: false,
+              timestamp: 'retry failed',
+              canRetry: (msg.retryCount || 0) < 3 // Allow up to 3 retries
+            }
           }
         }
         return msg
@@ -714,7 +756,6 @@ export default function ChatPage() {
       // Send WebSocket event for real-time updates to other users
       if (wsService) {
         wsService.sendMessage('conversation_created', {
-          conversationId: newConversation.id,
           title,
           participantIds
         })
@@ -765,7 +806,7 @@ export default function ChatPage() {
     })
   }
 
-  const handleSearchUsers = async (query: string): Promise<any[]> => {
+  const handleSearchUsers = async (query: string): Promise<User[]> => {
     try {
       setError(null)
       const users = await apiService.searchUsers(query)
@@ -776,28 +817,60 @@ export default function ChatPage() {
     }
   }
 
-  // Show error state if something went wrong
-  if (error) {
+  // Update loading state when user is loaded
+  useEffect(() => {
+    if (currentUser) {
+      console.log('👤 User loaded, setting loading to false')
+      setIsLoading(false)
+      setAuthError(null)
+    }
+  }, [currentUser])
+  
+  // Handle auth errors
+  useEffect(() => {
+    if (error) {
+      console.error('❌ Chat page error:', error)
+      setAuthError(typeof error === 'string' ? error : 'An unknown error occurred')
+      setIsLoading(false)
+    }
+  }, [error])
+  
+  // Show loading state
+  if (isLoading) {
     return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="h-screen flex items-center justify-center"
-      >
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Try Again
-          </button>
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-foreground">Loading chat...</p>
+          <p className="text-sm text-muted-foreground">This may take a moment</p>
         </div>
-      </motion.div>
+      </div>
     )
   }
-
-  // Don't render if user is not available
+  
+  // Show error state
+  if (authError) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="text-center space-y-4 p-6 max-w-md mx-auto">
+          <div className="text-destructive text-4xl">⚠️</div>
+          <h2 className="text-xl font-semibold">Unable to load chat</h2>
+          <p className="text-muted-foreground">{authError}</p>
+          <Button 
+            onClick={() => window.location.reload()}
+            className="mt-4"
+          >
+            Try Again
+          </Button>
+          <p className="text-sm text-muted-foreground mt-4">
+            If the problem persists, please try logging out and back in.
+          </p>
+        </div>
+      </div>
+    )
+  }
+  
+  // Don't render if user is not available (fallback)
   if (!currentUser) {
     return null
   }

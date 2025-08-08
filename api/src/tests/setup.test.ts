@@ -1,5 +1,5 @@
 import { beforeAll, afterAll, beforeEach } from 'bun:test'
-import { mockPrisma, mockUser, mockConversation, mockMessage, resetMockState } from './__mocks__/prisma'
+import { prismaMock, resetPrismaMock, mockUser, mockConversation, mockMessage } from './prisma-mock'
 import { app } from '../index'
 
 // Mock the prisma import for all tests
@@ -9,6 +9,9 @@ import { app } from '../index'
 // This ensures the auth and db modules import our mocks instead of the real implementations
 import { mock } from 'bun:test'
 
+// Track invalidated sessions for auth mocking
+const invalidatedSessions = new Set<string>()
+
 // IMPORTANT: Global mocking removed to prevent interference with integration tests
 // Unit tests now use setupUnitTestMocks() to apply mocking only when needed
 // Integration tests use the real database and auth implementations for true end-to-end testing
@@ -17,9 +20,30 @@ import { mock } from 'bun:test'
 export function setupUnitTestMocks() {
   // Mock the db module to use our test-friendly Prisma implementation
   mock.module('../db/index.ts', () => {
-    const { mockPrisma } = require('./__mocks__/prisma')
     return {
-      prisma: mockPrisma,
+      prisma: prismaMock,
+      initializeDatabase: async () => {
+        console.log('✅ Connected to PostgreSQL database')
+      },
+      closeDatabaseConnection: async () => undefined
+    }
+  })
+
+  // Also mock the extensionless import path used in some unit tests
+  mock.module('../db', () => {
+    return {
+      prisma: prismaMock,
+      initializeDatabase: async () => {
+        console.log('✅ Connected to PostgreSQL database')
+      },
+      closeDatabaseConnection: async () => undefined
+    }
+  })
+
+  // And mock the JS-resolved path used by some imports
+  mock.module('../db/index.js', () => {
+    return {
+      prisma: prismaMock,
       initializeDatabase: async () => {
         console.log('✅ Connected to PostgreSQL database')
       },
@@ -32,6 +56,34 @@ export function setupUnitTestMocks() {
     return {
       lucia: {
         validateSession: async (sessionId: string) => {
+          // If session was invalidated, treat as not authenticated
+          if (invalidatedSessions.has(sessionId)) {
+            return { session: null, user: null }
+          }
+          // Test-friendly sessions: allow encoding user in the session ID
+          if (typeof sessionId === 'string' && sessionId.startsWith('test-session:')) {
+            const userId = sessionId.split(':', 2)[1] || 'user1'
+            return {
+              session: {
+                id: sessionId,
+                userId,
+                fresh: false,
+                expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24)
+              },
+              user: {
+                id: userId,
+                username: 'testuser',
+                email: 'test@example.com',
+                firstName: 'Test',
+                lastName: 'User',
+                avatar: null,
+                emailVerified: true,
+                createdAt: new Date(),
+                updatedAt: new Date()
+              }
+            }
+          }
+          // Back-compat default session maps to user1
           if (sessionId === 'mock-session-id') {
             return {
               session: {
@@ -56,12 +108,14 @@ export function setupUnitTestMocks() {
           return { session: null, user: null }
         },
         createSession: async (userId: string) => ({
-          id: 'mock-session-id',
+          id: `test-session:${userId}`,
           userId,
           fresh: true,
           expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24)
         }),
-        invalidateSession: async () => undefined,
+        invalidateSession: async (sessionId: string) => {
+          invalidatedSessions.add(sessionId)
+        },
         createSessionCookie: (sessionId: string) => ({
           name: 'session',
           value: sessionId,
@@ -104,7 +158,8 @@ afterAll(async () => {
 
 beforeEach(async () => {
   // Reset mock state before each test to prevent state pollution
-  resetMockState()
+  resetPrismaMock()
+  invalidatedSessions.clear()
 })
 
 // Mock session data for authentication
@@ -129,7 +184,7 @@ export const createTestUser = async (overrides: any = {}) => {
   }
   
   // Actually create the user in the mock database for proper BDD testing
-  return await mockPrisma.user.create({ data: userData })
+  return await prismaMock.user.create({ data: userData })
 }
 
 export const createTestConversation = async (userId: string, overrides: any = {}) => {
@@ -151,7 +206,7 @@ export const createTestConversation = async (userId: string, overrides: any = {}
     }]
   }
   
-  return await mockPrisma.conversation.create({ data: conversationData })
+  return await prismaMock.conversation.create({ data: conversationData })
 }
 
 export const createTestMessage = async (conversationId: string, authorId: string, overrides: any = {}) => {
@@ -163,13 +218,16 @@ export const createTestMessage = async (conversationId: string, authorId: string
     ...overrides
   }
   
-  return await mockPrisma.message.create({ data: messageData })
+  return await prismaMock.message.create({ data: messageData })
 }
 
 // Authentication utilities for unit tests
 export const createAuthenticatedRequest = (url: string, options: RequestInit = {}) => {
   const headers = new Headers(options.headers)
-  headers.set('Cookie', `session=${mockSession.id}`)
+  // Respect existing Cookie header so tests can impersonate specific users
+  if (!headers.has('Cookie')) {
+    headers.set('Cookie', `session=${mockSession.id}`)
+  }
   
   return new Request(url, {
     ...options,
@@ -205,5 +263,13 @@ export const createAuthHeaders = (sessionId: string = mockSession.id): Record<st
   }
 }
 
+// Helper to create auth headers for a specific user id
+export const createAuthHeadersForUser = (userId: string): Record<string, string> => {
+  return createAuthHeaders(`test-session:${userId}`)
+}
+
+// Helper to reset auth mock state for integration tests that call setupUnitTestMocks()
+export const resetAuthMockState = () => invalidatedSessions.clear()
+
 // Export mocked prisma for use in tests
-export { mockPrisma as prisma }
+export { prismaMock as prisma }

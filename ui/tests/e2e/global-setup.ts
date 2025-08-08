@@ -1,6 +1,6 @@
-import { chromium, FullConfig } from '@playwright/test';
+// Global setup for Playwright tests
 
-async function globalSetup(config: FullConfig) {
+async function globalSetup() {
   console.log('🚀 Global setup: Starting Playwright test suite...');
   
   // Wait a bit for servers to be ready

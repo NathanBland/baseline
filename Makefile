@@ -25,6 +25,9 @@ dev: ## Start development environment
 	@sleep 5
 	docker-compose up api ui
 
+dev-db: ## Start only databases for local dev
+	docker-compose up -d postgres redis
+
 dev-detached: ## Start development environment in background
 	docker-compose up -d
 
@@ -56,21 +59,18 @@ test-ui: ## Run UI tests only
 	docker-compose exec ui npm run test
 
 test-coverage: ## Run tests with coverage
-	docker-compose exec api bun run test:coverage
+	docker-compose exec api bun test --coverage
 	docker-compose exec ui npm run test:coverage
 
 # Code quality
 lint: ## Run linters
-	docker-compose exec api bun run lint
 	docker-compose exec ui npm run lint
 
 format: ## Format code
-	docker-compose exec api bun run format
 	docker-compose exec ui npm run format
 
 type-check: ## Run type checking
-	docker-compose exec api bun run type-check
-	docker-compose exec ui npm run type-check
+	docker-compose exec ui npm run typecheck
 
 # Container management
 down: ## Stop all containers
@@ -156,6 +156,6 @@ health: ## Check health of all services
 	@echo "Checking service health..."
 	@docker-compose ps
 	@echo "\nAPI Health:"
-	@curl -f http://localhost:3001/health || echo "API not responding"
+	@curl -f http://localhost:3000/health || echo "API not responding"
 	@echo "\nUI Health:"
 	@curl -f http://localhost:5173 || echo "UI not responding"

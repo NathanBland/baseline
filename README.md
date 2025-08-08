@@ -77,9 +77,9 @@ baseline/
    ```
 
 ### Available Services
-- **UI**: http://localhost:3000
-- **API**: http://localhost:3001
-- **API Docs**: http://localhost:3001/swagger
+- **UI**: http://localhost:5173
+- **API**: http://localhost:3000
+- **API Docs**: http://localhost:3000/swagger
 - **Database**: PostgreSQL on port 5432
 - **Redis**: Redis on port 6379
 
@@ -204,10 +204,10 @@ slack_webhook           # Slack webhook URL for deployment notifications
    
    # UI Configuration
    UI_PORT=3000
-   VITE_API_URL=https://your-domain.com/api
-   VITE_WS_URL=wss://your-domain.com/api
-   VITE_APP_NAME=Baseline Production
-   VITE_APP_VERSION=1.0.0
+   API_URL=https://baseline-api.aqueous.network
+   WS_URL=wss://baseline-api.aqueous.network
+   APP_NAME=Baseline Production
+   APP_VERSION=1.0.0
    
    # Docker Images (managed by CI/CD pipeline)
    IMAGE_TAG=latest
@@ -290,12 +290,12 @@ DATABASE_URL=postgresql://user:pass@host:port/db
 REDIS_URL=redis://host:port
 
 # API
-API_PORT=3001
+API_PORT=3000
 JWT_SECRET=your-secret-key
 
 # UI
-UI_PORT=3000
-API_URL=http://api:3001
+UI_PORT=5173
+API_URL=http://api:3000
 
 # Auth (Optional OIDC)
 OIDC_CLIENT_ID=your-client-id

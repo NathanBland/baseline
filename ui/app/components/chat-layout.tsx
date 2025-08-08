@@ -105,11 +105,8 @@ export function ChatLayout({
   onRetryMessage
 }: ChatLayoutProps) {
   const [messageInput, setMessageInput] = useState("")
-  const [searchQuery, setSearchQuery] = useState("")
   const [messageSearchQuery, setMessageSearchQuery] = useState("")
   const [isMessageSearchOpen, setIsMessageSearchOpen] = useState(false)
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [isCreatingConversation, setIsCreatingConversation] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   // Auto-scroll functionality
@@ -139,13 +136,6 @@ export function ChatLayout({
   }, [messages.length]) // Only depend on length, not full messages array
 
   const activeConversation = conversations.find(c => c.id === activeConversationId)
-  
-  const filteredConversations = conversations.filter(conversation =>
-    conversation.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conversation.participants.some(p => 
-      p.name.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  )
 
   // Filter messages based on search query
   const filteredMessages = messageSearchQuery.trim() 
@@ -188,15 +178,7 @@ export function ChatLayout({
     }
   }
 
-  const handleCreateConversation = async (title: string, participantIds: string[]) => {
-    setIsCreatingConversation(true)
-    try {
-      await onCreateConversation(title, participantIds)
-      setIsCreateDialogOpen(false)
-    } finally {
-      setIsCreatingConversation(false)
-    }
-  }
+  // Conversation creation is handled via ChatSidebar
 
   return (
     <div className="flex h-screen relative">
@@ -204,7 +186,16 @@ export function ChatLayout({
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 md:hidden" 
+          role="button"
+          tabIndex={0}
+          aria-label="Close sidebar overlay"
           onClick={() => setIsSidebarOpen(false)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              setIsSidebarOpen(false)
+            }
+          }}
         />
       )}
       
@@ -216,7 +207,7 @@ export function ChatLayout({
         w-80 md:w-80 h-screen
       `}>
         <ChatSidebar
-          conversations={filteredConversations}
+          conversations={conversations}
           activeConversationId={activeConversationId}
           currentUser={currentUser}
           typingUsers={typingUsers}

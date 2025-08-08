@@ -63,31 +63,28 @@ export default function SettingsPage() {
       } catch (err) {
         console.error('Failed to fetch user data:', err)
         setError(err instanceof Error ? err.message : 'Failed to load user data')
-        
-        // If API fails but we have cached data, continue with that
-        if (!user) {
-          // Fallback to basic user data if available
-          const cachedUser = localStorage.getItem('current_user')
-          if (cachedUser) {
-            try {
-              const parsedUser = JSON.parse(cachedUser)
-              setUser({
-                id: parsedUser.id || 'unknown',
-                name: parsedUser.username || parsedUser.name || 'User',
-                email: parsedUser.email || '',
-                avatar: parsedUser.avatar,
-                username: parsedUser.username
-              })
-            } catch {
-              // If all else fails, redirect to login
-              console.error('Unable to load user data, redirecting to login')
-              window.location.href = '/'
-            }
-          } else {
-            // No cached data and API failed - redirect to login
-            console.error('No user data available, redirecting to login')
+
+        // If API fails, try to use cached data or redirect
+        const cachedUser = localStorage.getItem('current_user')
+        if (cachedUser) {
+          try {
+            const parsedUser = JSON.parse(cachedUser)
+            setUser({
+              id: parsedUser.id || 'unknown',
+              name: parsedUser.username || parsedUser.name || 'User',
+              email: parsedUser.email || '',
+              avatar: parsedUser.avatar,
+              username: parsedUser.username
+            })
+          } catch {
+            // If all else fails, redirect to login
+            console.error('Unable to load user data, redirecting to login')
             window.location.href = '/'
           }
+        } else {
+          // No cached data and API failed - redirect to login
+          console.error('No user data available, redirecting to login')
+          window.location.href = '/'
         }
       } finally {
         setIsLoading(false)
@@ -106,7 +103,8 @@ export default function SettingsPage() {
       localStorage.removeItem('auth_token')
       
       if (token) {
-        await fetch(`${(window as any).ENV?.API_BASE_URL || 'http://localhost:3000'}/auth/logout`, {
+        const w = window as unknown as { ENV?: { API_URL?: string } }
+        await fetch(`${w.ENV?.API_URL || 'http://localhost:3000'}/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -135,7 +133,8 @@ export default function SettingsPage() {
         throw new Error('No authentication token found')
       }
       
-      const apiUrl = (window as any).ENV?.API_BASE_URL || 'http://localhost:3000'
+      const w = window as unknown as { ENV?: { API_URL?: string } }
+      const apiUrl = w.ENV?.API_URL || 'http://localhost:3000'
       const response = await fetch(`${apiUrl}/users/profile`, {
         method: 'PATCH',
         headers: {
@@ -153,7 +152,8 @@ export default function SettingsPage() {
         throw new Error(errorData.message || 'Failed to update profile')
       }
       
-      const updatedUser = await response.json()
+      // Consume response to avoid unhandled promise warnings (ignore body)
+      await response.json().catch(() => undefined)
       
       // Update user state with new data
       const newUserData: User = {

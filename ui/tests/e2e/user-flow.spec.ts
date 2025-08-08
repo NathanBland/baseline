@@ -8,38 +8,156 @@ const testUser = {
 };
 
 // Helper functions
-async function signUp(page: Page, userData = testUser) {
-  console.log('📝 Signing up user:', userData.username);
+async function signUp(
+  page: Page,
+  userOrEmail: { email: string; password: string; username: string } | string,
+  password?: string,
+  username?: string
+): Promise<{ email: string; password: string; username: string }> {
+  const creds =
+    typeof userOrEmail === 'string'
+      ? { email: userOrEmail, password: password as string, username: username as string }
+      : userOrEmail
+
+  console.log(`\n📝 Starting sign up process for ${creds.email}...`);
   
-  await page.goto('/');
+  // Enable console log capture
+  await page.on('console', msg => {
+    console.log(`[Browser Console ${msg.type()}] ${msg.text()}`);
+  });
   
-  // Toggle to sign-up mode if not already
-  const toggleButton = page.locator('button:has-text("Sign up")');
-  if (await toggleButton.isVisible()) {
-    await toggleButton.click();
+  // Log all network requests
+  await page.on('request', request => {
+    console.log(`[Request] ${request.method()} ${request.url()}`);
+  });
+  
+  // Log all responses
+  await page.on('response', response => {
+    console.log(`[Response ${response.status()}] ${response.url()}`);
+    if (response.status() >= 400) {
+      console.log(`  Error response:`, response.status(), response.statusText());
+    }
+  });
+  
+  // Log page errors
+  await page.on('pageerror', error => {
+    console.error(`[Page Error] ${error.message}`);
+  });
+  
+  // Note: Playwright does not have a dedicated 'unhandledrejection' event on Page; page errors will surface via 'pageerror'.
+  
+  // Wait for the sign-up form to be visible
+  console.log('  ↳ Waiting for sign-up form...');
+  await page.waitForSelector('button:has-text("Sign up")', { 
+    state: 'visible',
+    timeout: 10000
+  });
+  
+  // Click the sign-up link if we're on the login page
+  if (await page.isVisible('text=Don\'t have an account?')) {
+    console.log('  ↳ Clicking "Sign up" link...');
+    await page.click('text=Sign up');
+    await page.waitForTimeout(1000); // Increased delay for the form to switch
   }
   
-  // Wait for sign-up form to appear
-  await page.waitForSelector('input[name="name"]', { timeout: 5000 });
+  // Fill in the registration form
+  console.log('  ↳ Filling in registration form...');
+  await page.fill('input[name="email"]', creds.email);
+  await page.fill('input[name="password"]', creds.password);
+  await page.fill('input[name="confirmPassword"]', creds.password);
+  await page.fill('input[name="name"]', creds.username);
   
-  // Fill sign-up form
-  await page.fill('input[name="name"]', userData.username); // Full name field
-  await page.fill('input[name="email"]', userData.email);
-  await page.fill('input[name="password"]', userData.password);
+  // Submit the form and wait for navigation
+  console.log('  ↳ Submitting registration form...');
+  const navigationPromise = page.waitForNavigation({ 
+    waitUntil: 'networkidle',
+    timeout: 30000
+  });
   
-  // Fill confirm password if visible
-  const confirmPasswordField = page.locator('input[name="confirmPassword"]');
-  if (await confirmPasswordField.isVisible()) {
-    await confirmPasswordField.fill(userData.password);
+  await page.click('button:has-text("Create Account")');
+  
+  try {
+    await navigationPromise;
+    console.log('  ✅ Registration form submitted successfully');
+  } catch (error) {
+    console.error('❌ Navigation after form submission failed:', error);
+    throw error;
   }
   
-  // Submit the form
-  await page.click('button:has-text("Create Account"), button[type="submit"]');
+  // Wait for the chat page to load
+  console.log('  ↳ Waiting for chat page to load...');
+  try {
+    await page.waitForURL('**/chat', { 
+      timeout: 10000,
+      waitUntil: 'domcontentloaded'
+    });
+    console.log('  ✅ Successfully navigated to /chat');
+  } catch (error) {
+    console.error('❌ Failed to navigate to /chat. Current URL:', page.url());
+    throw error;
+  }
   
-  // Wait for successful registration (redirect or success message)
-  await page.waitForURL(/.*chat.*/, { timeout: 15000 });
+  // Check for auth state
+  const authState = await page.evaluate(() => {
+    return {
+      hasUser: !!localStorage.getItem('current_user'),
+      hasToken: !!localStorage.getItem('auth_token'),
+      pathname: window.location.pathname,
+      documentTitle: document.title,
+      bodyText: document.body.innerText.substring(0, 500) + '...',
+      errorElements: Array.from(document.querySelectorAll('[class*="error"],[class*="Error"]')).map(el => ({
+        tag: el.tagName,
+        id: el.id,
+        class: el.className,
+        text: el.textContent?.substring(0, 200)
+      }))
+    };
+  });
   
-  console.log('✅ User signed up successfully');
+  console.log('Auth state after navigation:', JSON.stringify(authState, null, 2));
+  
+  // Wait for the chat input field to be visible, indicating the chat interface is loaded
+  console.log('  ↳ Waiting for chat input field...');
+  try {
+    await page.waitForSelector('textarea[placeholder="Type a message..."]', { 
+      timeout: 30000, // 30 seconds
+      state: 'visible'
+    });
+    
+    console.log('✅ Successfully loaded chat interface after sign up');
+    
+    // Take a screenshot for debugging
+    await page.screenshot({ path: 'test-results/chat-loaded.png' });
+    
+  } catch (error) {
+    console.error('❌ Failed to load chat interface after sign up');
+    
+    // Capture current page state for debugging
+    const pageState = await page.evaluate(() => {
+      return {
+        url: window.location.href,
+        title: document.title,
+        bodyText: document.body.innerText,
+        localStorage: Object.entries(localStorage).reduce((acc, [key, value]) => {
+          acc[key] = key.includes('token') ? '***REDACTED***' : value;
+          return acc;
+        }, {} as Record<string, string>),
+        sessionStorage: { ...sessionStorage },
+        cookies: document.cookie,
+        consoleErrors: (window as unknown as { consoleErrors?: unknown[] }).consoleErrors || [],
+        networkErrors: (window as unknown as { networkErrors?: unknown[] }).networkErrors || []
+      };
+    });
+    
+    console.error('Page state at time of failure:', JSON.stringify(pageState, null, 2));
+    
+    // Take a screenshot of the current page
+    await page.screenshot({ path: 'test-results/chat-load-failed.png' });
+    
+    throw error;
+  }
+  
+  return { email: creds.email, password: creds.password, username: creds.username };
 }
 
 async function signIn(page: Page, userData = testUser) {
@@ -134,7 +252,8 @@ async function createConversation(page: Page, title: string): Promise<string> {
   
   // Extract conversation ID if available (optional, not critical for test)
   try {
-    const conversationElement = await page.locator(`button:has-text("${title}")`).first();
+    // Ensure the conversation button exists in the DOM
+    await page.locator(`button:has-text("${title}")`).first();
     // For now, just return a placeholder since ID extraction is not needed for test flow
     return 'created-successfully';
   } catch (error) {
@@ -177,7 +296,8 @@ async function addParticipantToConversation(page: Page, conversationId: string, 
   try {
     // Call the API directly to add participant
     const response = await page.evaluate(async ({ conversationId, userId }) => {
-      const apiUrl = (window as any).ENV?.API_BASE_URL || 'http://localhost:3000';
+      const w = window as unknown as { ENV?: { API_URL?: string } };
+      const apiUrl = w.ENV?.API_URL || 'http://localhost:3000';
       const response = await fetch(`${apiUrl}/conversations/${conversationId}/participants`, {
         method: 'POST',
         headers: {
@@ -204,6 +324,8 @@ async function addParticipantToConversation(page: Page, conversationId: string, 
     throw error;
   }
 }
+
+// (removed) logNetworkRequests helper: unused
 
 test.describe.configure({ mode: 'serial' });
 
@@ -253,7 +375,7 @@ test.describe('Complete User Flow', () => {
     
     // Step 2: Create a "notes" conversation with self
     console.log('\n📋 Step 2: Create notes conversation');
-    const notesConversationId = await createConversation(page, 'My Notes');
+    await createConversation(page, 'My Notes');
     
     // Step 3: Send a message in the notes conversation
     console.log('\n📋 Step 3: Send message in notes');
@@ -275,7 +397,7 @@ test.describe('Complete User Flow', () => {
     
     // Step 6: Create another conversation
     console.log('\n📋 Step 6: Create work conversation');
-    const workConversationId = await createConversation(page, 'Work Tasks');
+    await createConversation(page, 'Work Tasks');
     
     // Send a message in the new conversation
     console.log('\n📋 Step 7: Send message in work conversation');
@@ -339,7 +461,8 @@ test.describe('Complete User Flow', () => {
       // Get User 2's ID from the API (needed for invitation)
       console.log('📋 Getting User 2 ID for invitation...');
       const user2Id = await secondPage.evaluate(async () => {
-        const apiUrl = (window as any).ENV?.API_BASE_URL || 'http://localhost:3000';
+        const w = window as unknown as { ENV?: { API_URL?: string } };
+        const apiUrl = w.ENV?.API_URL || 'http://localhost:3000';
         const response = await fetch(`${apiUrl}/auth/me`, {
           credentials: 'include'
         });
@@ -352,30 +475,21 @@ test.describe('Complete User Flow', () => {
       
       // Get conversation ID from the first user's page
       console.log('📋 Getting conversation ID for invitation...');
-      const conversationId = await page.evaluate(() => {
-        // Try to get conversation ID from the active conversation in the UI
-        const activeButton = document.querySelector('button[variant="secondary"]');
-        if (activeButton) {
-          // Extract conversation ID from the button's data or onclick handler
-          // This is a simplified approach - in a real app you'd have better selectors
-          return 'conv_shared_chat'; // Fallback approach
-        }
-        return null;
-      });
       
       // For now, let's try a different approach - get the conversation ID from the URL or DOM
       // Since we know User 1 created "Shared Chat", we'll get all conversations from API
       const actualConversationId = await page.evaluate(async () => {
-        const apiUrl = (window as any).ENV?.API_BASE_URL || 'http://localhost:3000';
+        const w = window as unknown as { ENV?: { API_URL?: string } };
+        const apiUrl = w.ENV?.API_URL || 'http://localhost:3000';
         const response = await fetch(`${apiUrl}/conversations`, {
           credentials: 'include'
         });
         if (!response.ok) {
           throw new Error('Failed to get conversations');
         }
-        const data = await response.json();
-        const sharedChat = data.conversations.find((conv: any) => conv.title === 'Shared Chat');
-        return sharedChat?.id || null;
+        const data = (await response.json()) as { conversations?: Array<{ id: string; title?: string }> };
+        const sharedChat = (data.conversations || []).find((conv) => conv.title === 'Shared Chat');
+        return sharedChat?.id ?? null;
       });
       
       if (!actualConversationId) {

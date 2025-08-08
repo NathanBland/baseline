@@ -1,8 +1,7 @@
 import { beforeEach, describe, it, expect } from 'bun:test'
 import { setupUnitTestMocks } from './setup.test'
 import { app } from '../index'
-import { resetMockState } from './__mocks__/prisma'
-import { createTestUser, createTestConversation, createTestMessage, createAuthenticatedRequest, createAuthHeaders } from './setup.test'
+import { createTestUser, createTestConversation, createTestMessage, createAuthenticatedRequest, createAuthHeaders, createAuthHeadersForUser } from './setup.test'
 
 // Apply unit test mocking isolation for Given-When-Then BDD compliance
 setupUnitTestMocks()
@@ -27,7 +26,7 @@ describe('Conversation Routes', () => {
 
     it('should return conversations with participants and latest message when user has conversations', async () => {
       // Given: An authenticated user with conversations
-      const user = await createTestUser({ id: 'mock-user-with-conversations' })
+      const user = await createTestUser({ id: 'user1' })
       const conversation = await createTestConversation(user.id, {
         title: 'Test Chat'
       })
@@ -60,7 +59,7 @@ describe('Conversation Routes', () => {
 
     it('should handle pagination when user has multiple conversations', async () => {
       // Given: An authenticated user with multiple conversations
-      const user = await createTestUser({ id: 'mock-user-with-conversations' }) // Match mock participant
+      const user = await createTestUser({ id: 'user1' }) // Match mocked auth session user
       await createTestConversation(user.id, { title: 'Chat 1' })
       await createTestConversation(user.id, { title: 'Chat 2' })
 
@@ -90,7 +89,7 @@ describe('Conversation Routes', () => {
   describe('GET /conversations/:id', () => {
     it('should return conversation by id', async () => {
       // Given: An authenticated user with a conversation
-      const user = await createTestUser({ id: 'mock-user-with-conversations' })
+      const user = await createTestUser({ id: 'user1' })
       const conversation = await createTestConversation(user.id)
 
       // When: The user requests a specific conversation by ID
@@ -120,7 +119,7 @@ describe('Conversation Routes', () => {
   describe('POST /conversations', () => {
     it('should create new conversation', async () => {
       // Given: An authenticated user with conversation data
-      const user = await createTestUser({ id: 'mock-user-with-conversations' })
+      const user = await createTestUser({ id: 'user1' })
       const conversationData = {
         title: 'New Conversation',
         type: 'GROUP',
@@ -160,7 +159,7 @@ describe('Conversation Routes', () => {
 
   describe('PUT /conversations/:id', () => {
     it('should update conversation', async () => {
-      const user = await createTestUser()
+      const user = await createTestUser({ id: 'user1' })
       const conversation = await createTestConversation(user.id)
 
       const response = await app.handle(
@@ -179,7 +178,7 @@ describe('Conversation Routes', () => {
 
   describe('DELETE /conversations/:id', () => {
     it('should delete conversation', async () => {
-      const user = await createTestUser()
+      const user = await createTestUser({ id: 'user1' })
       const conversation = await createTestConversation(user.id)
 
       const response = await app.handle(
@@ -237,7 +236,7 @@ describe('Conversation Routes', () => {
       const response = await app.handle(
         createAuthenticatedRequest(`http://localhost/conversations/${conversation.id}/participants?userId=${user2.id}`, {
           method: 'POST',
-          headers: createAuthHeaders(),
+          headers: createAuthHeadersForUser(user2.id),
           body: JSON.stringify({ userId: user3.id, role: 'MEMBER' })
         })
       )

@@ -64,7 +64,7 @@ export function ChatSidebar({
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState("")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [isCreatingConversation, setIsCreatingConversation] = useState(false)
+  const [, setIsCreatingConversation] = useState(false)
 
   const filteredConversations = conversations.filter(conv =>
     conv.title.toLowerCase().includes(searchQuery.toLowerCase()) ||

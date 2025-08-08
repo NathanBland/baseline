@@ -1,7 +1,6 @@
 import { beforeEach, describe, it, expect } from 'bun:test'
 import { setupUnitTestMocks, createTestUser, createAuthenticatedRequest } from './setup.test'
 import { app } from '../index'
-import { resetMockState } from './__mocks__/prisma'
 
 // Apply unit test mocking isolation for Given-When-Then BDD compliance
 setupUnitTestMocks()
